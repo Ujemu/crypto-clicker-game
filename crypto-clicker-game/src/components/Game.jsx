@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { ref, set, onValue } from "firebase/database";
 import { database } from "../firebase";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion"; // Import motion for animation
 
 function Game({ user }) {
   const [clicks, setClicks] = useState(0);
