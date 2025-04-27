@@ -15,7 +15,7 @@ function Game({ user }) {
   // Save player when component mounts
   useEffect(() => {
     if (username) {
-      const userRef = ref(database, 'players/${username}'); // FIXED: use backticks here
+      const userRef = ref(database, 'players/${username}'); // Corrected: backticks
       set(userRef, {
         username: username,
         coins: 0,
@@ -56,7 +56,7 @@ function Game({ user }) {
   // Save player's coins each time clicks change
   useEffect(() => {
     if (username) {
-      const userRef = ref(database, 'players/${username}'); // FIXED: backticks here too
+      const userRef = ref(database, 'players/${username}'); // Corrected: backticks
       set(userRef, {
         username: username,
         coins: clicks,
