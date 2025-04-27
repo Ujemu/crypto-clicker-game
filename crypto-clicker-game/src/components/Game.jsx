@@ -8,9 +8,20 @@ function Game({ user }) {
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
   const [players, setPlayers] = useState([]);
-  const [level, setLevel] = useState(1); // New: Level
+  const [level, setLevel] = useState(1);
 
   const username = user || "Anonymous";
+
+  // Save player when component mounts
+  useEffect(() => {
+    if (username) {
+      const userRef = ref(database, 'players/${username}'); // FIXED: use backticks here
+      set(userRef, {
+        username: username,
+        coins: 0,
+      });
+    }
+  }, [username]);
 
   const handleClick = () => {
     setClicks(prev => prev + multiplier);
@@ -19,7 +30,7 @@ function Game({ user }) {
   const handleUpgradeMultiplier = () => {
     if (clicks >= 20) {
       setMultiplier(prev => prev + 1);
-      setClicks(prev => prev - 20); // Deduct 20 coins
+      setClicks(prev => prev - 20);
     } else {
       alert("You need at least 20 coins to upgrade your multiplier!");
     }
@@ -28,7 +39,7 @@ function Game({ user }) {
   const handleAddAutoClicker = () => {
     if (clicks >= 100) {
       setAutoClickers(prev => prev + 1);
-      setClicks(prev => prev - 100); // Deduct 100 coins
+      setClicks(prev => prev - 100);
     } else {
       alert("You need at least 100 coins to unlock an Auto-Clicker!");
     }
@@ -38,27 +49,22 @@ function Game({ user }) {
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
-    }, 3000); // Every 3 seconds
+    }, 3000);
     return () => clearInterval(interval);
   }, [autoClickers]);
 
-  // Update Level based on coins
-  useEffect(() => {
-    const newLevel = Math.floor(clicks / 50) + 1;
-    setLevel(newLevel);
-  }, [clicks]);
-
-  // Save to Firebase
+  // Save player's coins each time clicks change
   useEffect(() => {
     if (username) {
-      set(ref(database, 'players/' + username), {
+      const userRef = ref(database, 'players/${username}'); // FIXED: backticks here too
+      set(userRef, {
         username: username,
         coins: clicks,
       });
     }
   }, [clicks, username]);
 
-  // Fetch leaderboard players
+  // Fetch all players
   useEffect(() => {
     const playersRef = ref(database, "players/");
     onValue(playersRef, (snapshot) => {
@@ -67,17 +73,18 @@ function Game({ user }) {
         const playersArray = Object.values(data);
         playersArray.sort((a, b) => b.coins - a.coins);
         setPlayers(playersArray);
+      } else {
+        setPlayers([]);
       }
     });
   }, []);
 
   return (
-    <div style={{ padding: "20px", textAlign: "center" }}>
+    <div style={{ padding: "20px", textAlign: "center", maxWidth: "1000px", margin: "auto" }}>
       <h1>Welcome, {username}</h1>
       <h2>Coins: {clicks}</h2>
       <h3>Level: {level}</h3>
 
-      {/* Animated Click Button */}
       <motion.button
         whileTap={{ scale: 1.2 }}
         whileHover={{ scale: 1.1 }}
@@ -142,26 +149,42 @@ function Game({ user }) {
       </div>
 
       {/* Leaderboard Section */}
-      <div style={{ marginTop: "50px" }}>
-        <h2>Leaderboard</h2>
-        <table style={{ width: "100%", marginTop: "20px", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ borderBottom: "2px solid black", padding: "10px" }}>Rank</th>
-              <th style={{ borderBottom: "2px solid black", padding: "10px" }}>Username</th>
-              <th style={{ borderBottom: "2px solid black", padding: "10px" }}>Coins</th>
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((player, index) => (
-              <tr key={player.username}>
-                <td style={{ padding: "10px" }}>{index + 1}</td>
-                <td style={{ padding: "10px" }}>{player.username}</td>
-                <td style={{ padding: "10px" }}>{player.coins}</td>
+      <div style={{
+        marginTop: "50px",
+        backgroundColor: "#1a1a1a",
+        padding: "20px",
+        borderRadius: "12px",
+        maxHeight: "300px",
+        overflowY: "auto",
+        boxShadow: "0px 0px 10px rgba(0,0,0,0.5)",
+        marginBottom: "30px"
+      }}>
+        <h2 style={{ marginBottom: "20px" }}>Leaderboard</h2>
+
+        {players.length > 0 ? (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ borderBottom: "1px solid white", paddingBottom: "10px" }}>Rank</th>
+                <th style={{ borderBottom: "1px solid white", paddingBottom: "10px" }}>Username</th>
+                <th style={{ borderBottom: "1px solid white", paddingBottom: "10px" }}>Coins</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {players.map((player, index) => (
+                <tr key={index}>
+                  <td style={{ textAlign: "center", padding: "8px" }}>{index + 1}</td>
+                  <td style={{ textAlign: "center", padding: "8px" }}>{player.username}</td>
+                  <td style={{ textAlign: "center", padding: "8px" }}>{player.coins}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p style={{ color: 'white', fontSize: '18px', marginTop: '20px' }}>
+            Game made by <strong>Web3degen</strong> — Loading...
+          </p>
+        )}
       </div>
     </div>
   );
