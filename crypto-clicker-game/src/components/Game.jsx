@@ -1,7 +1,7 @@
-import { motion } from "framer-motion";
-import { ref, set, onValue } from "firebase/database";
-import { database } from "../firebase";
-import { useEffect, useState } from "react";
+import { motion } from 'framer-motion';
+import { ref, get, set, onValue } from 'firebase/database';
+import { database } from '../firebase';
+import { useEffect, useState } from 'react';
 
 function Game({ user }) {
   const [clicks, setClicks] = useState(0);
@@ -13,18 +13,18 @@ function Game({ user }) {
   const [autoClickerCost, setAutoClickerCost] = useState(100);
   const [popupMessage, setPopupMessage] = useState('');
 
-  const username = (user || "Anonymous").toLowerCase(); // Always lowercase username
+  const username = (user || "anonymous").toLowerCase(); // Always lowercase
 
-  // Function to calculate coins needed per level
+  // Coins needed for next level
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
   };
 
-  // Load player data from Firebase
+  // Load player data once when user logs in
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
-      onValue(userRef, (snapshot) => {
+      get(userRef).then((snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
           setClicks(data.coins || 0);
@@ -34,6 +34,7 @@ function Game({ user }) {
           setMultiplierCost(data.multiplierCost || 50);
           setAutoClickerCost(data.autoClickerCost || 100);
         } else {
+          // First time user
           set(userRef, {
             username: username,
             coins: 0,
@@ -48,7 +49,7 @@ function Game({ user }) {
     }
   }, [username]);
 
-  // Save player progress
+  // Always save user data whenever important state changes
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
@@ -64,7 +65,7 @@ function Game({ user }) {
     }
   }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username]);
 
-  // Calculate Level based on coins
+  // Calculate player level based on coins
   useEffect(() => {
     let currentLevel = 0;
     let totalCoinsRequired = getCoinsNeededForLevel(0);
@@ -75,7 +76,7 @@ function Game({ user }) {
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clickers earning coins every 3 seconds
+  // Auto-clickers add coins every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
@@ -85,7 +86,7 @@ function Game({ user }) {
 
   // Fetch leaderboard
   useEffect(() => {
-    const playersRef = ref(database, "players/");
+    const playersRef = ref(database, 'players/');
     onValue(playersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -98,7 +99,7 @@ function Game({ user }) {
     });
   }, []);
 
-  // Button handlers
+  // Button Handlers
   const handleClick = () => {
     setClicks(prev => prev + multiplier);
   };
@@ -107,11 +108,11 @@ function Game({ user }) {
     if (clicks >= multiplierCost) {
       setMultiplier(prev => prev + 1);
       setClicks(prev => prev - multiplierCost);
-      setMultiplierCost(prev => prev + prev * 0.2); // 20% price increase
+      setMultiplierCost(prev => prev + prev * 0.2); // 20% inflation
       setPopupMessage('Multiplier Upgraded!');
       setTimeout(() => setPopupMessage(''), 2000);
     } else {
-      alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade your multiplier!`);
+      alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade!`);
     }
   };
 
@@ -119,7 +120,7 @@ function Game({ user }) {
     if (clicks >= autoClickerCost) {
       setAutoClickers(prev => prev + 1);
       setClicks(prev => prev - autoClickerCost);
-      setAutoClickerCost(prev => prev + prev * 0.2); // 20% price increase
+      setAutoClickerCost(prev => prev + prev * 0.2); // 20% inflation
       setPopupMessage('Auto-Clicker Purchased!');
       setTimeout(() => setPopupMessage(''), 2000);
     } else {
@@ -127,7 +128,7 @@ function Game({ user }) {
     }
   };
 
-  // Progress Bar
+  // Progress Bar Calculation
   const coinsForNextLevel = (() => {
     let requiredCoins = 0;
     for (let i = 0; i <= level; i++) {
@@ -141,7 +142,7 @@ function Game({ user }) {
   return (
     <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
       
-      {/* Glowing Welcome Banner */}
+      {/* Glowing Welcome Text */}
       <h1 style={{
         fontSize: "28px",
         fontWeight: "bold",
@@ -174,16 +175,14 @@ function Game({ user }) {
 
       {/* Progress Bar */}
       <div style={{ width: "80%", height: "20px", backgroundColor: "#333", margin: "10px auto", borderRadius: "10px", overflow: "hidden" }}>
-        <div 
-          style={{ 
-            width: progressWidth + '%',
-            height: "100%",
-            backgroundColor: "#4CAF50"
-          }}
-        ></div>
+        <div style={{ 
+          width: progressWidth + '%', 
+          height: "100%", 
+          backgroundColor: "#4CAF50" 
+        }}></div>
       </div>
 
-      {/* Click Button */}
+      {/* Main Click Button */}
       <motion.button
         whileTap={{ scale: 1.2 }}
         whileHover={{ scale: 1.1 }}
@@ -205,7 +204,7 @@ function Game({ user }) {
 
       {/* Upgrade Buttons */}
       <div style={{ marginTop: "20px" }}>
-        <button 
+        <button
           onClick={handleUpgradeMultiplier}
           style={{
             margin: "10px",
@@ -223,7 +222,7 @@ function Game({ user }) {
           <small>Cost: {Math.ceil(multiplierCost)} Coins</small>
         </button>
 
-        <button 
+        <button
           onClick={handleAddAutoClicker}
           style={{
             margin: "10px",
