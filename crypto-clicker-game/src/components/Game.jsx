@@ -9,14 +9,45 @@ function Game({ user }) {
   const [autoClickers, setAutoClickers] = useState(0);
   const [players, setPlayers] = useState([]);
   const [level, setLevel] = useState(0);
-  const username = user || "Anonymous";
+  const [multiplierCost, setMultiplierCost] = useState(50); // Dynamic price
+  const [autoClickerCost, setAutoClickerCost] = useState(100); // Dynamic price
+
+  const username = (user || "Anonymous").toLowerCase(); // Force lowercase usernames
 
   // Function to calculate coins needed per level
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
   };
 
-  // Save player data to Firebase
+  // Load player data from Firebase
+  useEffect(() => {
+    if (username) {
+      const userRef = ref(database, `players/${username}`);
+      onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          setClicks(data.coins || 0);
+          setLevel(data.level || 0);
+          setMultiplier(data.multiplier || 1);
+          setAutoClickers(data.autoClickers || 0);
+          setMultiplierCost(data.multiplierCost || 50);
+          setAutoClickerCost(data.autoClickerCost || 100);
+        } else {
+          set(userRef, {
+            username: username,
+            coins: 0,
+            level: 0,
+            multiplier: 1,
+            autoClickers: 0,
+            multiplierCost: 50,
+            autoClickerCost: 100,
+          });
+        }
+      });
+    }
+  }, [username]);
+
+  // Save player progress to Firebase when important things change
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
@@ -24,24 +55,26 @@ function Game({ user }) {
         username: username,
         coins: clicks,
         level: level,
+        multiplier: multiplier,
+        autoClickers: autoClickers,
+        multiplierCost: multiplierCost,
+        autoClickerCost: autoClickerCost,
       });
     }
-  }, [clicks, username, level]);
+  }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username]);
 
-  // Calculate Level based on coins (dynamic scaling)
+  // Calculate Level based on coins
   useEffect(() => {
     let currentLevel = 0;
     let totalCoinsRequired = getCoinsNeededForLevel(0);
-
     while (clicks >= totalCoinsRequired) {
       currentLevel++;
       totalCoinsRequired += getCoinsNeededForLevel(currentLevel);
     }
-
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clickers effect
+  // Auto-clickers earning coins
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
@@ -49,7 +82,7 @@ function Game({ user }) {
     return () => clearInterval(interval);
   }, [autoClickers]);
 
-  // Fetch leaderboard players
+  // Fetch leaderboard
   useEffect(() => {
     const playersRef = ref(database, "players/");
     onValue(playersRef, (snapshot) => {
@@ -70,24 +103,26 @@ function Game({ user }) {
   };
 
   const handleUpgradeMultiplier = () => {
-    if (clicks >= 50) {
+    if (clicks >= multiplierCost) {
       setMultiplier(prev => prev + 1);
-      setClicks(prev => prev - 50);
+      setClicks(prev => prev - multiplierCost);
+      setMultiplierCost(prev => prev + prev * 0.5); // Increase by 0.5%
     } else {
-      alert("You need at least 50 coins to upgrade your multiplier!");
+      alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade multiplier!`);
     }
   };
 
   const handleAddAutoClicker = () => {
-    if (clicks >= 100) {
+    if (clicks >= autoClickerCost) {
       setAutoClickers(prev => prev + 1);
-      setClicks(prev => prev - 100);
+      setClicks(prev => prev - autoClickerCost);
+      setAutoClickerCost(prev => prev + prev * 0.005); // Increase by 0.5%
     } else {
-      alert("You need at least 100 coins to unlock an Auto-Clicker!");
+      alert(`You need at least ${Math.ceil(autoClickerCost)} coins to unlock an Auto-Clicker!`);
     }
   };
 
-  // Calculate coins needed for the next level
+  // Calculate progress for next level
   const coinsForNextLevel = (() => {
     let requiredCoins = 0;
     for (let i = 0; i <= level; i++) {
@@ -95,6 +130,8 @@ function Game({ user }) {
     }
     return requiredCoins;
   })();
+
+  const progressWidth = Math.min((clicks / coinsForNextLevel) * 100, 100);
 
   return (
     <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
@@ -107,7 +144,7 @@ function Game({ user }) {
       <div style={{ width: "80%", height: "20px", backgroundColor: "#333", margin: "10px auto", borderRadius: "10px", overflow: "hidden" }}>
         <div 
           style={{ 
-            width: `${Math.min((clicks / coinsForNextLevel) * 100, 100)}%`,
+            width: progressWidth + '%',
             height: "100%",
             backgroundColor: "#4CAF50"
           }}
@@ -145,13 +182,13 @@ function Game({ user }) {
             backgroundColor: "#2196F3",
             border: "none",
             borderRadius: "8px",
-            cursor: clicks >= 50 ? "pointer" : "not-allowed",
-            opacity: clicks >= 50 ? 1 : 0.6
+            cursor: clicks >= multiplierCost ? "pointer" : "not-allowed",
+            opacity: clicks >= multiplierCost ? 1 : 0.6
           }}
         >
           Upgrade Multiplier (x{multiplier})
           <br />
-          <small>Need 50 Coins</small>
+          <small>Cost: {Math.ceil(multiplierCost)} Coins</small>
         </button>
 
         <button 
@@ -163,13 +200,13 @@ function Game({ user }) {
             backgroundColor: "#FF5722",
             border: "none",
             borderRadius: "8px",
-            cursor: clicks >= 100 ? "pointer" : "not-allowed",
-            opacity: clicks >= 100 ? 1 : 0.6
+            cursor: clicks >= autoClickerCost ? "pointer" : "not-allowed",
+            opacity: clicks >= autoClickerCost ? 1 : 0.6
           }}
         >
           Add Auto-Clicker ({autoClickers})
           <br />
-          <small>Need 100 Coins</small>
+          <small>Cost: {Math.ceil(autoClickerCost)} Coins</small>
         </button>
       </div>
 
@@ -191,8 +228,8 @@ function Game({ user }) {
                 <tr key={index}>
                   <td>{index + 1}</td>
                   <td>{player.username}</td>
-                  <td>{player.coins}</td>
-                  <td>{player.level || 0}</td> {/* fallback to level 0 if missing */}
+                  <td>{Math.floor(player.coins)}</td>
+                  <td>{player.level || 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -205,4 +242,4 @@ function Game({ user }) {
   );
 }
 
-export default Game ;
+export default Game;
