@@ -5,26 +5,32 @@ import { useEffect, useState } from 'react';
 
 function Game({ user, onLogout }) {
   const [username, setUsername] = useState('anonymous');
+  const [profilePicture, setProfilePicture] = useState('');
   const [clicks, setClicks] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
   const [level, setLevel] = useState(0);
   const [multiplierCost, setMultiplierCost] = useState(50);
   const [autoClickerCost, setAutoClickerCost] = useState(100);
+  const [lastClaimDate, setLastClaimDate] = useState('');
   const [popupMessage, setPopupMessage] = useState('');
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const todayDate = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
 
   const savePlayerData = async () => {
     const userRef = ref(database, `players/${username}`);
     await set(userRef, {
       username,
+      profilePicture,
       coins: clicks,
       level,
       multiplier,
       autoClickers,
       multiplierCost,
       autoClickerCost,
+      lastClaimDate,
     });
   };
 
@@ -40,16 +46,21 @@ function Game({ user, onLogout }) {
         setAutoClickers(data.autoClickers || 0);
         setMultiplierCost(data.multiplierCost || 50);
         setAutoClickerCost(data.autoClickerCost || 100);
+        setLastClaimDate(data.lastClaimDate || '');
+        setProfilePicture(data.profilePicture || "https://i.postimg.cc/Y9n6f0DC/default-avatar.png");
       } else {
         await set(ref(database, `players/${username}`), {
           username,
+          profilePicture,
           coins: 0,
           level: 0,
           multiplier: 1,
           autoClickers: 0,
           multiplierCost: 50,
           autoClickerCost: 100,
+          lastClaimDate: todayDate,
         });
+        setLastClaimDate(todayDate);
       }
       setLoading(false);
     } catch (error) {
@@ -59,11 +70,41 @@ function Game({ user, onLogout }) {
 
   useEffect(() => {
     if (user) {
-      const cleanUsername = user.trim().toLowerCase();
+      const cleanUsername = user.username.trim().toLowerCase();
       setUsername(cleanUsername);
+      setProfilePicture(user.profilePicture);
       loadPlayerData(cleanUsername);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!loading) {
+      savePlayerData();
+    }
+  }, [clicks, multiplier, autoClickers, level, lastClaimDate]);
+
+  useEffect(() => {
+    const playersRef = ref(database, 'players/');
+    onValue(playersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const playersArray = Object.values(data);
+        playersArray.sort((a, b) => b.coins - a.coins);
+        setPlayers(playersArray);
+      }
+    });
+  }, []);
+
+  const handleDailyReward = () => {
+    if (lastClaimDate !== todayDate) {
+      setClicks(prev => prev + 50); // 50 coins daily
+      setLastClaimDate(todayDate);
+      setPopupMessage('Daily Reward Claimed! +50 Coins');
+      setTimeout(() => setPopupMessage(''), 3000);
+    } else {
+      alert("You have already claimed today's reward!");
+    }
+  };
 
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
@@ -87,24 +128,6 @@ function Game({ user, onLogout }) {
     }, 3000);
     return () => clearInterval(interval);
   }, [autoClickers, loading]);
-
-  useEffect(() => {
-    if (!loading) {
-      savePlayerData();
-    }
-  }, [clicks, multiplier, autoClickers, level]);
-
-  useEffect(() => {
-    const playersRef = ref(database, 'players/');
-    onValue(playersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const playersArray = Object.values(data);
-        playersArray.sort((a, b) => b.coins - a.coins);
-        setPlayers(playersArray);
-      }
-    });
-  }, []);
 
   const handleClick = () => {
     setClicks(prev => prev + multiplier);
@@ -145,7 +168,13 @@ function Game({ user, onLogout }) {
   const progressWidth = Math.min((clicks / coinsForNextLevel) * 100, 100);
 
   return (
-    <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
+    <div style={{
+      padding: "20px",
+      textAlign: "center",
+      backgroundColor: "#121212",
+      minHeight: "100vh",
+      color: "white"
+    }}>
       <h1 style={{
         fontSize: "28px",
         fontWeight: "bold",
@@ -156,16 +185,36 @@ function Game({ user, onLogout }) {
         WELCOME TO UJEMU'S DAO ✨
       </h1>
 
+      <motion.img
+        src={profilePicture}
+        alt="Profile"
+        style={{
+          width: "100px",
+          height: "100px",
+          borderRadius: "50%",
+          marginTop: "10px",
+          objectFit: "cover",
+          border: "2px solid #4CAF50"
+        }}
+      />
+
       <h2>Player: {username}</h2>
       <h2>Coins: {Math.floor(clicks)}</h2>
       <h3>Level: {level}</h3>
       <p>Next level at: {coinsForNextLevel} coins</p>
 
-      <div style={{ width: "80%", height: "20px", backgroundColor: "#333", margin: "10px auto", borderRadius: "10px", overflow: "hidden" }}>
-        <div style={{ 
-          width: `${progressWidth}%`, 
-          height: "100%", 
-          backgroundColor: "#4CAF50" 
+      <div style={{
+        width: "80%",
+        height: "20px",
+        backgroundColor: "#333",
+        margin: "10px auto",
+        borderRadius: "10px",
+        overflow: "hidden"
+      }}>
+        <div style={{
+          width: `${progressWidth}%`,
+          height: "100%",
+          backgroundColor: "#4CAF50"
         }}></div>
       </div>
 
@@ -241,7 +290,35 @@ function Game({ user, onLogout }) {
         </button>
       </div>
 
-      <div style={{ marginTop: "50px", backgroundColor: "#1a1a1a", padding: "20px", borderRadius: "12px" }}>
+      <div style={{
+        marginTop: "20px"
+      }}>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 300 }}
+          onClick={handleDailyReward}
+          style={{
+            marginTop: '20px',
+            padding: '12px 24px',
+            fontSize: '18px',
+            backgroundColor: '#ff9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+          }}
+        >
+          Claim Daily Reward
+        </motion.button>
+      </div>
+
+      <div style={{
+        marginTop: "50px",
+        backgroundColor: "#1a1a1a",
+        padding: "20px",
+        borderRadius: "12px"
+      }}>
         <h2>Leaderboard</h2>
         {players.length > 0 ? (
           <table style={{ width: "100%", marginTop: "10px" }}>
@@ -256,8 +333,13 @@ function Game({ user, onLogout }) {
             <tbody>
               {players.map((player, index) => (
                 <tr key={index}>
-                  <td>{index + 1}</td>
-                  <td>{player.username}</td>
+                  <td>
+                    {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}
+                  </td>
+                  <td>
+                    <img src={player.profilePicture || "https://i.postimg.cc/Y9n6f0DC/default-avatar.png"} alt="PFP" style={{ width: "30px", height: "30px", borderRadius: "50%", marginRight: "8px" }} />
+                    {player.username}
+                  </td>
                   <td>{Math.floor(player.coins)}</td>
                   <td>{player.level || 0}</td>
                 </tr>
@@ -269,7 +351,6 @@ function Game({ user, onLogout }) {
         )}
       </div>
 
-      {/* Logout Button */}
       <div style={{ marginTop: "30px" }}>
         <motion.button
           whileHover={{ scale: 1.1 }}

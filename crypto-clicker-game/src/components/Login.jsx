@@ -3,20 +3,22 @@ import { motion } from 'framer-motion';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
+  const [profilePic, setProfilePic] = useState('');
 
   const handleLogin = () => {
-    const cleanUsername = username.trim().toLowerCase(); // Always lowercase and no spaces
+    const cleanUsername = username.trim().toLowerCase();
+    const pfpLink = profilePic.trim() || "https://i.postimg.cc/Y9n6f0DC/default-avatar.png"; // default avatar
 
-    if (cleanUsername.length >= 3) { // Minimum username length check
-      onLogin(cleanUsername);
+    if (cleanUsername.length >= 3) {
+      onLogin({ username: cleanUsername, profilePicture: pfpLink });
     } else {
-      alert("Username must be at least 3 characters long!");
+      alert("Username must be at least 3 characters!");
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-      handleLogin(); // Allow pressing "Enter" to login
+      handleLogin();
     }
   };
 
@@ -46,7 +48,7 @@ function Login({ onLogin }) {
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
-        onKeyDown={handleKeyDown} // Added to allow Enter key
+        onKeyDown={handleKeyDown}
         placeholder="Enter your username"
         style={{
           padding: '12px',
@@ -54,6 +56,24 @@ function Login({ onLogin }) {
           borderRadius: '8px',
           border: 'none',
           marginTop: '20px',
+          textAlign: 'center',
+        }}
+      />
+
+      <motion.input
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 0.5 }}
+        type="text"
+        value={profilePic}
+        onChange={(e) => setProfilePic(e.target.value)}
+        placeholder="Paste Profile Picture URL (optional)"
+        style={{
+          padding: '12px',
+          fontSize: '16px',
+          borderRadius: '8px',
+          border: 'none',
+          marginTop: '15px',
           textAlign: 'center',
         }}
       />

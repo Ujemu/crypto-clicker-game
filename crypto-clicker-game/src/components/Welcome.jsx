@@ -4,9 +4,8 @@ import { motion } from 'framer-motion';
 function Welcome({ onFinish }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      onFinish(); // Move to Login after 10 seconds
-    }, 10000);
-
+      onFinish();
+    }, 10000); // 10 seconds
     return () => clearTimeout(timer);
   }, [onFinish]);
 
@@ -21,7 +20,6 @@ function Welcome({ onFinish }) {
       color: 'white',
       padding: '20px'
     }}>
-      {/* Your PFP Image */}
       <motion.img
         src="https://i.postimg.cc/CMZKymWb/DEGEN.jpg"
         alt="Web3degen"
@@ -38,7 +36,6 @@ function Welcome({ onFinish }) {
         }}
       />
 
-      {/* Game by Web3degen Text */}
       <motion.h1
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -48,7 +45,6 @@ function Welcome({ onFinish }) {
         Game by Web3degen
       </motion.h1>
 
-      {/* Loading animation */}
       <motion.div
         animate={{ y: [0, 10, 0] }}
         transition={{ repeat: Infinity, duration: 1.5 }}
