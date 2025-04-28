@@ -24,7 +24,7 @@ function Welcome({ onFinish }) {
     }}>
       <motion.img
         src="https://i.postimg.cc/CMZKymWb/DEGEN.jpg"
-        alt="Profile"
+        alt="Web3Degen Profile"
         style={{ width: '150px', height: '150px', borderRadius: '50%', marginBottom: '20px' }}
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -35,7 +35,7 @@ function Welcome({ onFinish }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
       >
-        Loading Web3degen Game...
+        Game By Web3degen Loading....
       </motion.div>
       <motion.div
         animate={{ rotate: 360 }}
