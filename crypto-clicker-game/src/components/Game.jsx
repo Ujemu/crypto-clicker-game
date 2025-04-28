@@ -9,10 +9,11 @@ function Game({ user }) {
   const [autoClickers, setAutoClickers] = useState(0);
   const [players, setPlayers] = useState([]);
   const [level, setLevel] = useState(0);
-  const [multiplierCost, setMultiplierCost] = useState(50); // Dynamic price
-  const [autoClickerCost, setAutoClickerCost] = useState(100); // Dynamic price
+  const [multiplierCost, setMultiplierCost] = useState(50);
+  const [autoClickerCost, setAutoClickerCost] = useState(100);
+  const [popupMessage, setPopupMessage] = useState('');
 
-  const username = (user || "Anonymous").toLowerCase(); // Force lowercase usernames
+  const username = (user || "Anonymous").toLowerCase(); // Always lowercase username
 
   // Function to calculate coins needed per level
   const getCoinsNeededForLevel = (lvl) => {
@@ -47,7 +48,7 @@ function Game({ user }) {
     }
   }, [username]);
 
-  // Save player progress to Firebase when important things change
+  // Save player progress
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
@@ -74,7 +75,7 @@ function Game({ user }) {
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clickers earning coins
+  // Auto-clickers earning coins every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
@@ -97,7 +98,7 @@ function Game({ user }) {
     });
   }, []);
 
-  // Button Handlers
+  // Button handlers
   const handleClick = () => {
     setClicks(prev => prev + multiplier);
   };
@@ -106,9 +107,11 @@ function Game({ user }) {
     if (clicks >= multiplierCost) {
       setMultiplier(prev => prev + 1);
       setClicks(prev => prev - multiplierCost);
-      setMultiplierCost(prev => prev + prev * 0.2); // Increase by 20%
+      setMultiplierCost(prev => prev + prev * 0.2); // 20% price increase
+      setPopupMessage('Multiplier Upgraded!');
+      setTimeout(() => setPopupMessage(''), 2000);
     } else {
-      alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade multiplier!`);
+      alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade your multiplier!`);
     }
   };
 
@@ -116,13 +119,15 @@ function Game({ user }) {
     if (clicks >= autoClickerCost) {
       setAutoClickers(prev => prev + 1);
       setClicks(prev => prev - autoClickerCost);
-      setAutoClickerCost(prev => prev + prev * 0.2); // Increase by 20%
+      setAutoClickerCost(prev => prev + prev * 0.2); // 20% price increase
+      setPopupMessage('Auto-Clicker Purchased!');
+      setTimeout(() => setPopupMessage(''), 2000);
     } else {
-      alert(`You need at least ${Math.ceil(autoClickerCost)} coins to unlock an Auto-Clicker!`);
+      alert(`You need at least ${Math.ceil(autoClickerCost)} coins to buy an Auto-Clicker!`);
     }
   };
 
-  // Calculate progress for next level
+  // Progress Bar
   const coinsForNextLevel = (() => {
     let requiredCoins = 0;
     for (let i = 0; i <= level; i++) {
@@ -135,8 +140,35 @@ function Game({ user }) {
 
   return (
     <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
-      <h1>Welcome, {username}</h1>
-      <h2>Coins: {clicks}</h2>
+      
+      {/* Glowing Welcome Banner */}
+      <h1 style={{
+        fontSize: "28px",
+        fontWeight: "bold",
+        color: "#ffffff",
+        textShadow: "0 0 10px #00f7ff, 0 0 20px #00f7ff, 0 0 30px #00f7ff",
+        animation: "glow 2s infinite alternate"
+      }}>
+        WELCOME TO UJEMU'S DAO ✨
+      </h1>
+
+      {/* Popup Message */}
+      {popupMessage && (
+        <div style={{
+          margin: "10px auto",
+          padding: "10px 20px",
+          backgroundColor: "#4CAF50",
+          color: "white",
+          borderRadius: "8px",
+          width: "fit-content",
+          fontSize: "16px",
+          animation: "fade 2s"
+        }}>
+          {popupMessage}
+        </div>
+      )}
+
+      <h2>Coins: {Math.floor(clicks)}</h2>
       <h3>Level: {level}</h3>
       <p>Next level at: {coinsForNextLevel} coins</p>
 
