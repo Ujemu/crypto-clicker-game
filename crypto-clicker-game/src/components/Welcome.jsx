@@ -23,7 +23,7 @@ function Welcome({ onFinish }) {
       padding: '20px'
     }}>
       <motion.img
-        src="https://postimg.cc/grWp8qc0"
+        src="https://i.postimg.cc/CMZKymWb/DEGEN.jpg"
         alt="Profile"
         style={{ width: '150px', height: '150px', borderRadius: '50%', marginBottom: '20px' }}
         initial={{ scale: 0 }}
