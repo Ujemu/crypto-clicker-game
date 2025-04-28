@@ -8,18 +8,26 @@ function Game({ user }) {
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
   const [players, setPlayers] = useState([]);
+  const [level, setLevel] = useState(1);
   const username = user || "Anonymous";
 
-  // Save player when clicks change
+  // Save player when clicks or level change
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
       set(userRef, {
         username: username,
         coins: clicks,
+        level: level,
       });
     }
-  }, [clicks, username]);
+  }, [clicks, username, level]);
+
+  // Calculate Level based on coins
+  useEffect(() => {
+    const newLevel = Math.floor(clicks / 100) + 1;
+    setLevel(newLevel);
+  }, [clicks]);
 
   // Auto-clickers
   useEffect(() => {
@@ -49,11 +57,11 @@ function Game({ user }) {
   };
 
   const handleUpgradeMultiplier = () => {
-    if (clicks >= 20) {
+    if (clicks >= 50) {
       setMultiplier(prev => prev + 1);
-      setClicks(prev => prev - 20);
+      setClicks(prev => prev - 50);
     } else {
-      alert("You need at least 20 coins to upgrade your multiplier!");
+      alert("You need at least 50 coins to upgrade your multiplier!");
     }
   };
 
@@ -70,6 +78,7 @@ function Game({ user }) {
     <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
       <h1>Welcome, {username}</h1>
       <h2>Coins: {clicks}</h2>
+      <h3>Level: {level}</h3>
 
       <motion.button
         whileTap={{ scale: 1.2 }}
@@ -101,11 +110,13 @@ function Game({ user }) {
             backgroundColor: "#2196F3",
             border: "none",
             borderRadius: "8px",
-            cursor: clicks >= 20 ? "pointer" : "not-allowed",
-            opacity: clicks >= 20 ? 1 : 0.6
+            cursor: clicks >= 50 ? "pointer" : "not-allowed",
+            opacity: clicks >= 50 ? 1 : 0.6
           }}
         >
           Upgrade Multiplier (x{multiplier})
+          <br />
+          <small>Need 50 Coins</small>
         </button>
 
         <button 
@@ -122,6 +133,8 @@ function Game({ user }) {
           }}
         >
           Add Auto-Clicker ({autoClickers})
+          <br />
+          <small>Need 100 Coins</small>
         </button>
       </div>
 
@@ -135,6 +148,7 @@ function Game({ user }) {
                 <th>Rank</th>
                 <th>Username</th>
                 <th>Coins</th>
+                <th>Level</th>
               </tr>
             </thead>
             <tbody>
@@ -143,6 +157,7 @@ function Game({ user }) {
                   <td>{index + 1}</td>
                   <td>{player.username}</td>
                   <td>{player.coins}</td>
+                  <td>{player.level || 1}</td> {/* fallback to level 1 if missing */}
                 </tr>
               ))}
             </tbody>
