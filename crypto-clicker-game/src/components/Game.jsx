@@ -13,14 +13,14 @@ function Game({ user }) {
   const [autoClickerCost, setAutoClickerCost] = useState(100);
   const [popupMessage, setPopupMessage] = useState('');
 
-  const username = (user || "anonymous").toLowerCase(); // Always lowercase
+  const username = (user || "anonymous").toLowerCase(); // Always lowercase username
 
-  // Coins needed for next level
+  // Calculate how many coins needed per level
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
   };
 
-  // Load player data once when user logs in
+  // Load player data once
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
@@ -34,7 +34,7 @@ function Game({ user }) {
           setMultiplierCost(data.multiplierCost || 50);
           setAutoClickerCost(data.autoClickerCost || 100);
         } else {
-          // First time user
+          // Create new user if not exists
           set(userRef, {
             username: username,
             coins: 0,
@@ -49,7 +49,7 @@ function Game({ user }) {
     }
   }, [username]);
 
-  // Always save user data whenever important state changes
+  // Always save player data whenever changes
   useEffect(() => {
     if (username) {
       const userRef = ref(database, `players/${username}`);
@@ -65,7 +65,7 @@ function Game({ user }) {
     }
   }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username]);
 
-  // Calculate player level based on coins
+  // Calculate Level properly
   useEffect(() => {
     let currentLevel = 0;
     let totalCoinsRequired = getCoinsNeededForLevel(0);
@@ -76,7 +76,7 @@ function Game({ user }) {
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clickers add coins every 3 seconds
+  // Auto-clickers effect
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
