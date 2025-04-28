@@ -1,85 +1,23 @@
-import { motion } from "framer-motion";
-import { ref, set, onValue } from "firebase/database";
-import { database } from "../firebase";
-import { useEffect, useState } from "react";
-
-function Game({ user }) {
-  const [clicks, setClicks] = useState(0);
-  const [multiplier, setMultiplier] = useState(1);
-  const [autoClickers, setAutoClickers] = useState(0);
-  const [players, setPlayers] = useState([]);
-  const [level, setLevel] = useState(1);
-  const username = user || "Anonymous";
-
-  // Save player when clicks or level change
-  useEffect(() => {
-    if (username) {
-      const userRef = ref(database, `players/${username}`);
-      set(userRef, {
-        username: username,
-        coins: clicks,
-        level: level,
-      });
-    }
-  }, [clicks, username, level]);
-
-  // Calculate Level based on coins
-  useEffect(() => {
-    const newLevel = Math.floor(clicks / 100) + 1;
-    setLevel(newLevel);
-  }, [clicks]);
-
-  // Auto-clickers
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setClicks(prev => prev + autoClickers);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [autoClickers]);
-
-  // Fetch all players
-  useEffect(() => {
-    const playersRef = ref(database, "players/");
-    onValue(playersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const playersArray = Object.values(data);
-        playersArray.sort((a, b) => b.coins - a.coins);
-        setPlayers(playersArray);
-      } else {
-        setPlayers([]);
-      }
-    });
-  }, []);
-
-  const handleClick = () => {
-    setClicks(prev => prev + multiplier);
-  };
-
-  const handleUpgradeMultiplier = () => {
-    if (clicks >= 50) {
-      setMultiplier(prev => prev + 1);
-      setClicks(prev => prev - 50);
-    } else {
-      alert("You need at least 50 coins to upgrade your multiplier!");
-    }
-  };
-
-  const handleAddAutoClicker = () => {
-    if (clicks >= 100) {
-      setAutoClickers(prev => prev + 1);
-      setClicks(prev => prev - 100);
-    } else {
-      alert("You need at least 100 coins to unlock an Auto-Clicker!");
-    }
-  };
-
-  return (
-    <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
+return (
+  <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
+    <>
       <h1>Welcome, {username}</h1>
       <h2>Coins: {clicks}</h2>
       <h3>Level: {level}</h3>
+      <p>Next level at: {coinsForNextLevel} coins</p>
 
+      {/* Progress Bar */}
+      <div style={{ width: "80%", height: "20px", backgroundColor: "#333", margin: "10px auto", borderRadius: "10px", overflow: "hidden" }}>
+        <div 
+          style={{ 
+            width: `${Math.min((clicks / coinsForNextLevel) * 100, 100)}%`,
+            height: "100%",
+            backgroundColor: "#4CAF50"
+          }}
+        ></div>
+      </div>
+
+      {/* Click Button */}
       <motion.button
         whileTap={{ scale: 1.2 }}
         whileHover={{ scale: 1.1 }}
@@ -157,7 +95,7 @@ function Game({ user }) {
                   <td>{index + 1}</td>
                   <td>{player.username}</td>
                   <td>{player.coins}</td>
-                  <td>{player.level || 1}</td> {/* fallback to level 1 if missing */}
+                  <td>{player.level || 0}</td> {/* fallback to level 0 if missing */}
                 </tr>
               ))}
             </tbody>
@@ -166,8 +104,6 @@ function Game({ user }) {
           <p>Loading leaderboard...</p>
         )}
       </div>
-    </div>
-  );
-}
-
-export default Game;
+    </>
+  </div>
+);
