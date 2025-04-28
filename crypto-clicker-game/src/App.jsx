@@ -1,23 +1,27 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import Welcome from './components/Welcome';
 import Login from './components/Login';
 import Game from './components/Game';
 
 function App() {
+  const [step, setStep] = useState('welcome'); // welcome -> login -> game
   const [user, setUser] = useState(null);
 
+  const handleWelcomeFinish = () => {
+    setStep('login');
+  };
+
+  const handleLogin = (username) => {
+    setUser(username);
+    setStep('game');
+  };
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#0e0e10', // Dark background
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'column',
-      color: 'white', // Make text readable
-      padding: '20px'
-    }}>
-      {!user ? <Login onLogin={setUser} /> : <Game user={user} />}
-    </div>
+    <>
+      {step === 'welcome' && <Welcome onFinish={handleWelcomeFinish} />}
+      {step === 'login' && <Login onLogin={handleLogin} />}
+      {step === 'game' && <Game user={user} />}
+    </>
   );
 }
 
