@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 function Welcome({ onFinish }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      onFinish(); // move to login after 3 seconds
-    }, 3000);
+      onFinish(); // move to login after 10 seconds
+    }, 10000); // 10 seconds
     return () => clearTimeout(timer);
   }, [onFinish]);
 
@@ -14,19 +14,35 @@ function Welcome({ onFinish }) {
       height: '100vh',
       backgroundColor: '#121212',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       color: 'white',
-      fontSize: '36px',
-      fontWeight: 'bold',
+      fontSize: '28px',
       textAlign: 'center',
+      padding: '20px'
     }}>
-      <motion.div
+      <motion.img
+        src="https://postimg.cc/grWp8qc0"
+        alt="Profile"
+        style={{ width: '150px', height: '150px', borderRadius: '50%', marginBottom: '20px' }}
         initial={{ scale: 0 }}
-        animate={{ rotate: 360, scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 1 }}
+      />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1 }}
       >
-        Welcome to Web3degen Game!
+        Loading Web3degen Game...
+      </motion.div>
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+        style={{ marginTop: "20px", fontSize: "24px" }}
+      >
+        ⏳
       </motion.div>
     </div>
   );
