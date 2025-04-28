@@ -106,7 +106,7 @@ function Game({ user }) {
     if (clicks >= multiplierCost) {
       setMultiplier(prev => prev + 1);
       setClicks(prev => prev - multiplierCost);
-      setMultiplierCost(prev => prev + prev * 0.5); // Increase by 0.5%
+      setMultiplierCost(prev => prev + prev * 0.2); // Increase by 20%
     } else {
       alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade multiplier!`);
     }
@@ -116,7 +116,7 @@ function Game({ user }) {
     if (clicks >= autoClickerCost) {
       setAutoClickers(prev => prev + 1);
       setClicks(prev => prev - autoClickerCost);
-      setAutoClickerCost(prev => prev + prev * 0.005); // Increase by 0.5%
+      setAutoClickerCost(prev => prev + prev * 0.2); // Increase by 20%
     } else {
       alert(`You need at least ${Math.ceil(autoClickerCost)} coins to unlock an Auto-Clicker!`);
     }
