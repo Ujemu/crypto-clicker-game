@@ -5,8 +5,11 @@ function Login({ onLogin }) {
   const [username, setUsername] = useState('');
 
   const handleLogin = () => {
-    if (username.trim()) {
-      onLogin(username);
+    const cleanUsername = username.trim().toLowerCase(); // Force lowercase and remove spaces
+    if (cleanUsername) {
+      onLogin(cleanUsername); // Always pass lowercase username
+    } else {
+      alert("Please enter a valid username!");
     }
   };
 
@@ -28,6 +31,7 @@ function Login({ onLogin }) {
       >
         Enter your username
       </motion.h2>
+
       <motion.input
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
@@ -45,6 +49,7 @@ function Login({ onLogin }) {
           textAlign: 'center',
         }}
       />
+
       <motion.button
         onClick={handleLogin}
         whileHover={{ scale: 1.1 }}
