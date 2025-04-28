@@ -1,34 +1,34 @@
 import { motion } from 'framer-motion';
-import { ref, get, set, onValue } from 'firebase/database';
+import { ref, get, update, onValue } from 'firebase/database';
 import { database } from '../firebase';
 import { useEffect, useState } from 'react';
 
 function Game({ user }) {
+  const [username, setUsername] = useState('anonymous');
   const [clicks, setClicks] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
-  const [players, setPlayers] = useState([]);
   const [level, setLevel] = useState(0);
   const [multiplierCost, setMultiplierCost] = useState(50);
   const [autoClickerCost, setAutoClickerCost] = useState(100);
   const [popupMessage, setPopupMessage] = useState('');
+  const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [readyToSave, setReadyToSave] = useState(false);
 
-  const username = (user || "anonymous").toLowerCase(); // Always lowercase
-
-  // Calculate coins needed per level
+  // Calculate coins needed for next level
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
   };
 
-  // Load player data properly (only create new if not exists)
+  // Load player data
   useEffect(() => {
-    if (username) {
-      const userRef = ref(database, `players/${username}`);
+    if (user) {
+      const cleanUsername = user.trim().toLowerCase();
+      setUsername(cleanUsername);
+
+      const userRef = ref(database, `players/${cleanUsername}`);
       get(userRef).then((snapshot) => {
         if (snapshot.exists()) {
-          // If user exists, load their data
           const data = snapshot.val();
           setClicks(data.coins || 0);
           setLevel(data.level || 0);
@@ -36,48 +36,36 @@ function Game({ user }) {
           setAutoClickers(data.autoClickers || 0);
           setMultiplierCost(data.multiplierCost || 50);
           setAutoClickerCost(data.autoClickerCost || 100);
-          setLoading(false);
-          setReadyToSave(true);
         } else {
-          // If new user, create default data
-          set(userRef, {
-            username: username,
+          // Create new user
+          update(userRef, {
+            username: cleanUsername,
             coins: 0,
             level: 0,
             multiplier: 1,
             autoClickers: 0,
             multiplierCost: 50,
             autoClickerCost: 100,
-          }).then(() => {
-            setClicks(0);
-            setLevel(0);
-            setMultiplier(1);
-            setAutoClickers(0);
-            setMultiplierCost(50);
-            setAutoClickerCost(100);
-            setLoading(false);
-            setReadyToSave(true);
           });
         }
+        setLoading(false);
       });
     }
-  }, [username]);
+  }, [user]);
 
-  // Save user data after any important change
-  useEffect(() => {
-    if (username && readyToSave) {
-      const userRef = ref(database, `players/${username}`);
-      set(userRef, {
-        username: username,
-        coins: clicks,
-        level: level,
-        multiplier: multiplier,
-        autoClickers: autoClickers,
-        multiplierCost: multiplierCost,
-        autoClickerCost: autoClickerCost,
-      });
-    }
-  }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username, readyToSave]);
+  // Save player data only when they play
+  const savePlayerData = () => {
+    const userRef = ref(database, `players/${username}`);
+    update(userRef, {
+      username: username,
+      coins: clicks,
+      level: level,
+      multiplier: multiplier,
+      autoClickers: autoClickers,
+      multiplierCost: multiplierCost,
+      autoClickerCost: autoClickerCost,
+    });
+  };
 
   // Level calculation
   useEffect(() => {
@@ -93,10 +81,16 @@ function Game({ user }) {
   // Auto-clickers effect
   useEffect(() => {
     const interval = setInterval(() => {
-      setClicks(prev => prev + autoClickers);
+      if (!loading) {
+        setClicks(prev => {
+          const newClicks = prev + autoClickers;
+          savePlayerData(); // Save after auto-click
+          return newClicks;
+        });
+      }
     }, 3000);
     return () => clearInterval(interval);
-  }, [autoClickers]);
+  }, [autoClickers, loading]);
 
   // Fetch leaderboard
   useEffect(() => {
@@ -107,24 +101,27 @@ function Game({ user }) {
         const playersArray = Object.values(data);
         playersArray.sort((a, b) => b.coins - a.coins);
         setPlayers(playersArray);
-      } else {
-        setPlayers([]);
       }
     });
   }, []);
 
   // Button Handlers
   const handleClick = () => {
-    setClicks(prev => prev + multiplier);
+    setClicks(prev => {
+      const newClicks = prev + multiplier;
+      savePlayerData(); // Save after click
+      return newClicks;
+    });
   };
 
   const handleUpgradeMultiplier = () => {
     if (clicks >= multiplierCost) {
       setMultiplier(prev => prev + 1);
       setClicks(prev => prev - multiplierCost);
-      setMultiplierCost(prev => prev + prev * 0.2);
+      setMultiplierCost(prev => prev + multiplierCost * 0.2);
       setPopupMessage('Multiplier Upgraded!');
       setTimeout(() => setPopupMessage(''), 2000);
+      savePlayerData();
     } else {
       alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade!`);
     }
@@ -134,15 +131,15 @@ function Game({ user }) {
     if (clicks >= autoClickerCost) {
       setAutoClickers(prev => prev + 1);
       setClicks(prev => prev - autoClickerCost);
-      setAutoClickerCost(prev => prev + prev * 0.2);
+      setAutoClickerCost(prev => prev + autoClickerCost * 0.2);
       setPopupMessage('Auto-Clicker Purchased!');
       setTimeout(() => setPopupMessage(''), 2000);
+      savePlayerData();
     } else {
       alert(`You need at least ${Math.ceil(autoClickerCost)} coins to buy an Auto-Clicker!`);
     }
   };
 
-  // Progress Bar Calculation
   const coinsForNextLevel = (() => {
     let requiredCoins = 0;
     for (let i = 0; i <= level; i++) {
@@ -155,8 +152,6 @@ function Game({ user }) {
 
   return (
     <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
-      
-      {/* Glowing Welcome */}
       <h1 style={{
         fontSize: "28px",
         fontWeight: "bold",
@@ -167,7 +162,19 @@ function Game({ user }) {
         WELCOME TO UJEMU'S DAO ✨
       </h1>
 
-      {/* Popup Message */}
+      <h2>Player: {username}</h2>
+      <h2>Coins: {Math.floor(clicks)}</h2>
+      <h3>Level: {level}</h3>
+      <p>Next level at: {coinsForNextLevel} coins</p>
+
+      <div style={{ width: "80%", height: "20px", backgroundColor: "#333", margin: "10px auto", borderRadius: "10px", overflow: "hidden" }}>
+        <div style={{ 
+          width: `${progressWidth}%`, 
+          height: "100%", 
+          backgroundColor: "#4CAF50" 
+        }}></div>
+      </div>
+
       {popupMessage && (
         <div style={{
           margin: "10px auto",
@@ -183,20 +190,6 @@ function Game({ user }) {
         </div>
       )}
 
-      <h2>Coins: {Math.floor(clicks)}</h2>
-      <h3>Level: {level}</h3>
-      <p>Next level at: {coinsForNextLevel} coins</p>
-
-      {/* Progress Bar */}
-      <div style={{ width: "80%", height: "20px", backgroundColor: "#333", margin: "10px auto", borderRadius: "10px", overflow: "hidden" }}>
-        <div style={{ 
-          width: progressWidth + '%', 
-          height: "100%", 
-          backgroundColor: "#4CAF50" 
-        }}></div>
-      </div>
-
-      {/* Main Click Button */}
       <motion.button
         whileTap={{ scale: 1.2 }}
         whileHover={{ scale: 1.1 }}
@@ -216,7 +209,6 @@ function Game({ user }) {
         Click Me!
       </motion.button>
 
-      {/* Upgrade Buttons */}
       <div style={{ marginTop: "20px" }}>
         <button
           onClick={handleUpgradeMultiplier}
@@ -255,7 +247,6 @@ function Game({ user }) {
         </button>
       </div>
 
-      {/* Leaderboard */}
       <div style={{ marginTop: "50px", backgroundColor: "#1a1a1a", padding: "20px", borderRadius: "12px" }}>
         <h2>Leaderboard</h2>
         {players.length > 0 ? (
