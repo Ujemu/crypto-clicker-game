@@ -5,11 +5,18 @@ function Login({ onLogin }) {
   const [username, setUsername] = useState('');
 
   const handleLogin = () => {
-    const cleanUsername = username.trim().toLowerCase(); // Force lowercase and remove spaces
-    if (cleanUsername) {
-      onLogin(cleanUsername); // Always pass lowercase username
+    const cleanUsername = username.trim().toLowerCase(); // Always lowercase and no spaces
+
+    if (cleanUsername.length >= 3) { // Minimum username length check
+      onLogin(cleanUsername);
     } else {
-      alert("Please enter a valid username!");
+      alert("Username must be at least 3 characters long!");
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin(); // Allow pressing "Enter" to login
     }
   };
 
@@ -39,6 +46,7 @@ function Login({ onLogin }) {
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
+        onKeyDown={handleKeyDown} // Added to allow Enter key
         placeholder="Enter your username"
         style={{
           padding: '12px',
@@ -53,6 +61,8 @@ function Login({ onLogin }) {
       <motion.button
         onClick={handleLogin}
         whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 300 }}
         style={{
           marginTop: '20px',
           padding: '12px 24px',

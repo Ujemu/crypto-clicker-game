@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
-import { ref, get, update, onValue } from 'firebase/database';
+import { ref, get, set, onValue, child } from 'firebase/database';
 import { database } from '../firebase';
 import { useEffect, useState } from 'react';
 
-function Game({ user }) {
+function Game({ user, onLogout }) {
   const [username, setUsername] = useState('anonymous');
   const [clicks, setClicks] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
@@ -15,59 +15,60 @@ function Game({ user }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Calculate coins needed for next level
-  const getCoinsNeededForLevel = (lvl) => {
-    return 10000 + (lvl * 15000);
+  const savePlayerData = async () => {
+    const userRef = ref(database, `players/${username}`);
+    await set(userRef, {
+      username,
+      coins: clicks,
+      level,
+      multiplier,
+      autoClickers,
+      multiplierCost,
+      autoClickerCost,
+    });
   };
 
-  // Load player data
+  const loadPlayerData = async (username) => {
+    const dbRef = ref(database);
+    try {
+      const snapshot = await get(child(dbRef, `players/${username}`));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setClicks(data.coins || 0);
+        setLevel(data.level || 0);
+        setMultiplier(data.multiplier || 1);
+        setAutoClickers(data.autoClickers || 0);
+        setMultiplierCost(data.multiplierCost || 50);
+        setAutoClickerCost(data.autoClickerCost || 100);
+      } else {
+        await set(ref(database, `players/${username}`), {
+          username,
+          coins: 0,
+          level: 0,
+          multiplier: 1,
+          autoClickers: 0,
+          multiplierCost: 50,
+          autoClickerCost: 100,
+        });
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error loading player data:", error);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       const cleanUsername = user.trim().toLowerCase();
       setUsername(cleanUsername);
-
-      const userRef = ref(database, `players/${cleanUsername}`);
-      get(userRef).then((snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          setClicks(data.coins || 0);
-          setLevel(data.level || 0);
-          setMultiplier(data.multiplier || 1);
-          setAutoClickers(data.autoClickers || 0);
-          setMultiplierCost(data.multiplierCost || 50);
-          setAutoClickerCost(data.autoClickerCost || 100);
-        } else {
-          // Create new user
-          update(userRef, {
-            username: cleanUsername,
-            coins: 0,
-            level: 0,
-            multiplier: 1,
-            autoClickers: 0,
-            multiplierCost: 50,
-            autoClickerCost: 100,
-          });
-        }
-        setLoading(false);
-      });
+      loadPlayerData(cleanUsername);
     }
   }, [user]);
 
-  // Save player data only when they play
-  const savePlayerData = () => {
-    const userRef = ref(database, `players/${username}`);
-    update(userRef, {
-      username: username,
-      coins: clicks,
-      level: level,
-      multiplier: multiplier,
-      autoClickers: autoClickers,
-      multiplierCost: multiplierCost,
-      autoClickerCost: autoClickerCost,
-    });
+  const getCoinsNeededForLevel = (lvl) => {
+    return 10000 + (lvl * 15000);
   };
 
-  // Level calculation
   useEffect(() => {
     let currentLevel = 0;
     let totalCoinsRequired = getCoinsNeededForLevel(0);
@@ -78,21 +79,21 @@ function Game({ user }) {
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clickers effect
   useEffect(() => {
     const interval = setInterval(() => {
       if (!loading) {
-        setClicks(prev => {
-          const newClicks = prev + autoClickers;
-          savePlayerData(); // Save after auto-click
-          return newClicks;
-        });
+        setClicks(prev => prev + autoClickers);
       }
     }, 3000);
     return () => clearInterval(interval);
   }, [autoClickers, loading]);
 
-  // Fetch leaderboard
+  useEffect(() => {
+    if (!loading) {
+      savePlayerData();
+    }
+  }, [clicks, multiplier, autoClickers, level]);
+
   useEffect(() => {
     const playersRef = ref(database, 'players/');
     onValue(playersRef, (snapshot) => {
@@ -105,13 +106,8 @@ function Game({ user }) {
     });
   }, []);
 
-  // Button Handlers
   const handleClick = () => {
-    setClicks(prev => {
-      const newClicks = prev + multiplier;
-      savePlayerData(); // Save after click
-      return newClicks;
-    });
+    setClicks(prev => prev + multiplier);
   };
 
   const handleUpgradeMultiplier = () => {
@@ -121,7 +117,6 @@ function Game({ user }) {
       setMultiplierCost(prev => prev + multiplierCost * 0.2);
       setPopupMessage('Multiplier Upgraded!');
       setTimeout(() => setPopupMessage(''), 2000);
-      savePlayerData();
     } else {
       alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade!`);
     }
@@ -134,7 +129,6 @@ function Game({ user }) {
       setAutoClickerCost(prev => prev + autoClickerCost * 0.2);
       setPopupMessage('Auto-Clicker Purchased!');
       setTimeout(() => setPopupMessage(''), 2000);
-      savePlayerData();
     } else {
       alert(`You need at least ${Math.ceil(autoClickerCost)} coins to buy an Auto-Clicker!`);
     }
@@ -273,6 +267,28 @@ function Game({ user }) {
         ) : (
           <p>Loading leaderboard...</p>
         )}
+      </div>
+
+      {/* Logout Button */}
+      <div style={{ marginTop: "30px" }}>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 300 }}
+          onClick={onLogout}
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            marginTop: '20px'
+          }}
+        >
+          Logout
+        </motion.button>
       </div>
     </div>
   );
