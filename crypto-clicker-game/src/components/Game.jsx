@@ -12,24 +12,23 @@ function Game({ user }) {
   const [multiplierCost, setMultiplierCost] = useState(50);
   const [autoClickerCost, setAutoClickerCost] = useState(100);
   const [popupMessage, setPopupMessage] = useState('');
-  const [loading, setLoading] = useState(true); // Loading state
-  const [readyToSave, setReadyToSave] = useState(false); // NEW: Only save after data loads
+  const [loading, setLoading] = useState(true);
+  const [readyToSave, setReadyToSave] = useState(false);
 
   const username = (user || "anonymous").toLowerCase(); // Always lowercase
 
-  // Function to calculate coins needed for level
+  // Calculate coins needed per level
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
   };
 
-  // Load user data from Firebase once
+  // Load player data properly (only create new if not exists)
   useEffect(() => {
     if (username) {
-      setLoading(true);
-      setReadyToSave(false); // Don't save yet when switching users
       const userRef = ref(database, `players/${username}`);
       get(userRef).then((snapshot) => {
         if (snapshot.exists()) {
+          // If user exists, load their data
           const data = snapshot.val();
           setClicks(data.coins || 0);
           setLevel(data.level || 0);
@@ -37,8 +36,10 @@ function Game({ user }) {
           setAutoClickers(data.autoClickers || 0);
           setMultiplierCost(data.multiplierCost || 50);
           setAutoClickerCost(data.autoClickerCost || 100);
+          setLoading(false);
+          setReadyToSave(true);
         } else {
-          // New user
+          // If new user, create default data
           set(userRef, {
             username: username,
             coins: 0,
@@ -47,17 +48,24 @@ function Game({ user }) {
             autoClickers: 0,
             multiplierCost: 50,
             autoClickerCost: 100,
+          }).then(() => {
+            setClicks(0);
+            setLevel(0);
+            setMultiplier(1);
+            setAutoClickers(0);
+            setMultiplierCost(50);
+            setAutoClickerCost(100);
+            setLoading(false);
+            setReadyToSave(true);
           });
         }
-        setLoading(false);
-        setReadyToSave(true); // Allow saving only after loading finished
       });
     }
   }, [username]);
 
-  // Save to Firebase after important state changes
+  // Save user data after any important change
   useEffect(() => {
-    if (username && readyToSave) { // Only save after loading is ready
+    if (username && readyToSave) {
       const userRef = ref(database, `players/${username}`);
       set(userRef, {
         username: username,
@@ -71,7 +79,7 @@ function Game({ user }) {
     }
   }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username, readyToSave]);
 
-  // Calculate Level properly
+  // Level calculation
   useEffect(() => {
     let currentLevel = 0;
     let totalCoinsRequired = getCoinsNeededForLevel(0);
@@ -82,7 +90,7 @@ function Game({ user }) {
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clicker effect
+  // Auto-clickers effect
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
@@ -90,7 +98,7 @@ function Game({ user }) {
     return () => clearInterval(interval);
   }, [autoClickers]);
 
-  // Fetch Leaderboard
+  // Fetch leaderboard
   useEffect(() => {
     const playersRef = ref(database, 'players/');
     onValue(playersRef, (snapshot) => {
@@ -114,7 +122,7 @@ function Game({ user }) {
     if (clicks >= multiplierCost) {
       setMultiplier(prev => prev + 1);
       setClicks(prev => prev - multiplierCost);
-      setMultiplierCost(prev => prev + prev * 0.2); // 20% inflation
+      setMultiplierCost(prev => prev + prev * 0.2);
       setPopupMessage('Multiplier Upgraded!');
       setTimeout(() => setPopupMessage(''), 2000);
     } else {
@@ -126,7 +134,7 @@ function Game({ user }) {
     if (clicks >= autoClickerCost) {
       setAutoClickers(prev => prev + 1);
       setClicks(prev => prev - autoClickerCost);
-      setAutoClickerCost(prev => prev + prev * 0.2); // 20% inflation
+      setAutoClickerCost(prev => prev + prev * 0.2);
       setPopupMessage('Auto-Clicker Purchased!');
       setTimeout(() => setPopupMessage(''), 2000);
     } else {
