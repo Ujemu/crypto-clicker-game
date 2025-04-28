@@ -12,18 +12,21 @@ function Game({ user }) {
   const [multiplierCost, setMultiplierCost] = useState(50);
   const [autoClickerCost, setAutoClickerCost] = useState(100);
   const [popupMessage, setPopupMessage] = useState('');
-  const [loading, setLoading] = useState(true); // Add loading state
+  const [loading, setLoading] = useState(true); // Loading state
+  const [readyToSave, setReadyToSave] = useState(false); // NEW: Only save after data loads
 
-  const username = (user || "anonymous").toLowerCase(); // Always lowercase username
+  const username = (user || "anonymous").toLowerCase(); // Always lowercase
 
-  // Function to calculate coins needed per level
+  // Function to calculate coins needed for level
   const getCoinsNeededForLevel = (lvl) => {
     return 10000 + (lvl * 15000);
   };
 
-  // Load player data ONCE when they login
+  // Load user data from Firebase once
   useEffect(() => {
     if (username) {
+      setLoading(true);
+      setReadyToSave(false); // Don't save yet when switching users
       const userRef = ref(database, `players/${username}`);
       get(userRef).then((snapshot) => {
         if (snapshot.exists()) {
@@ -46,14 +49,15 @@ function Game({ user }) {
             autoClickerCost: 100,
           });
         }
-        setLoading(false); // Data loaded, ready to save
+        setLoading(false);
+        setReadyToSave(true); // Allow saving only after loading finished
       });
     }
   }, [username]);
 
-  // Save player data whenever clicks, multiplier, etc change
+  // Save to Firebase after important state changes
   useEffect(() => {
-    if (username && !loading) { // Save only after data is loaded
+    if (username && readyToSave) { // Only save after loading is ready
       const userRef = ref(database, `players/${username}`);
       set(userRef, {
         username: username,
@@ -65,9 +69,9 @@ function Game({ user }) {
         autoClickerCost: autoClickerCost,
       });
     }
-  }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username, loading]);
+  }, [clicks, level, multiplier, autoClickers, multiplierCost, autoClickerCost, username, readyToSave]);
 
-  // Calculate Level based on coins
+  // Calculate Level properly
   useEffect(() => {
     let currentLevel = 0;
     let totalCoinsRequired = getCoinsNeededForLevel(0);
@@ -78,7 +82,7 @@ function Game({ user }) {
     setLevel(currentLevel);
   }, [clicks]);
 
-  // Auto-clickers earning coins
+  // Auto-clicker effect
   useEffect(() => {
     const interval = setInterval(() => {
       setClicks(prev => prev + autoClickers);
@@ -86,7 +90,7 @@ function Game({ user }) {
     return () => clearInterval(interval);
   }, [autoClickers]);
 
-  // Fetch leaderboard
+  // Fetch Leaderboard
   useEffect(() => {
     const playersRef = ref(database, 'players/');
     onValue(playersRef, (snapshot) => {
@@ -144,7 +148,7 @@ function Game({ user }) {
   return (
     <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
       
-      {/* Glowing Welcome Text */}
+      {/* Glowing Welcome */}
       <h1 style={{
         fontSize: "28px",
         fontWeight: "bold",
