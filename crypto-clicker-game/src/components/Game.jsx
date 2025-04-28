@@ -1,6 +1,103 @@
-return (
-  <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
-    <>
+import { motion } from "framer-motion";
+import { ref, set, onValue } from "firebase/database";
+import { database } from "../firebase";
+import { useEffect, useState } from "react";
+
+function Game({ user }) {
+  const [clicks, setClicks] = useState(0);
+  const [multiplier, setMultiplier] = useState(1);
+  const [autoClickers, setAutoClickers] = useState(0);
+  const [players, setPlayers] = useState([]);
+  const [level, setLevel] = useState(0);
+  const username = user || "Anonymous";
+
+  // Function to calculate coins needed per level
+  const getCoinsNeededForLevel = (lvl) => {
+    return 10000 + (lvl * 15000);
+  };
+
+  // Save player data to Firebase
+  useEffect(() => {
+    if (username) {
+      const userRef = ref(database, `players/${username}`);
+      set(userRef, {
+        username: username,
+        coins: clicks,
+        level: level,
+      });
+    }
+  }, [clicks, username, level]);
+
+  // Calculate Level based on coins (dynamic scaling)
+  useEffect(() => {
+    let currentLevel = 0;
+    let totalCoinsRequired = getCoinsNeededForLevel(0);
+
+    while (clicks >= totalCoinsRequired) {
+      currentLevel++;
+      totalCoinsRequired += getCoinsNeededForLevel(currentLevel);
+    }
+
+    setLevel(currentLevel);
+  }, [clicks]);
+
+  // Auto-clickers effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setClicks(prev => prev + autoClickers);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [autoClickers]);
+
+  // Fetch leaderboard players
+  useEffect(() => {
+    const playersRef = ref(database, "players/");
+    onValue(playersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const playersArray = Object.values(data);
+        playersArray.sort((a, b) => b.coins - a.coins);
+        setPlayers(playersArray);
+      } else {
+        setPlayers([]);
+      }
+    });
+  }, []);
+
+  // Button Handlers
+  const handleClick = () => {
+    setClicks(prev => prev + multiplier);
+  };
+
+  const handleUpgradeMultiplier = () => {
+    if (clicks >= 50) {
+      setMultiplier(prev => prev + 1);
+      setClicks(prev => prev - 50);
+    } else {
+      alert("You need at least 50 coins to upgrade your multiplier!");
+    }
+  };
+
+  const handleAddAutoClicker = () => {
+    if (clicks >= 100) {
+      setAutoClickers(prev => prev + 1);
+      setClicks(prev => prev - 100);
+    } else {
+      alert("You need at least 100 coins to unlock an Auto-Clicker!");
+    }
+  };
+
+  // Calculate coins needed for the next level
+  const coinsForNextLevel = (() => {
+    let requiredCoins = 0;
+    for (let i = 0; i <= level; i++) {
+      requiredCoins += getCoinsNeededForLevel(i);
+    }
+    return requiredCoins;
+  })();
+
+  return (
+    <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#121212", minHeight: "100vh", color: "white" }}>
       <h1>Welcome, {username}</h1>
       <h2>Coins: {clicks}</h2>
       <h3>Level: {level}</h3>
@@ -104,6 +201,8 @@ return (
           <p>Loading leaderboard...</p>
         )}
       </div>
-    </>
-  </div>
-);
+    </div>
+  );
+}
+
+export default Game ;
