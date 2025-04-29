@@ -1,101 +1,87 @@
+// Login.jsx
+
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { ref, get, child, set } from 'firebase/database';
+import { database } from '../firebase';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
-  const [profilePic, setProfilePic] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    const cleanUsername = username.trim().toLowerCase();
-    const pfpLink = profilePic.trim() || "https://i.postimg.cc/Y9n6f0DC/default-avatar.png"; // default avatar
-
-    if (cleanUsername.length >= 3) {
-      onLogin({ username: cleanUsername, profilePicture: pfpLink });
-    } else {
-      alert("Username must be at least 3 characters!");
+  const handleLogin = async () => {
+    if (!username || !password) {
+      setError("Please enter both username and password");
+      return;
     }
-  };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleLogin();
+    const cleanUsername = username.trim().toLowerCase();
+    const userRef = child(ref(database), `players/${cleanUsername}`);
+
+    try {
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        if (userData.password === password) {
+          onLogin({ username: cleanUsername });
+        } else {
+          setError("Incorrect password");
+        }
+      } else {
+        // New user - create
+        await set(ref(database, `players/${cleanUsername}`), {
+          username: cleanUsername,
+          password,
+          coins: 0,
+          level: 0,
+          multiplier: 1,
+          autoClickers: 0,
+          multiplierCost: 50,
+          autoClickerCost: 100,
+          lastClaimDate: new Date().toISOString().slice(0, 10),
+        });
+        onLogin({ username: cleanUsername });
+      }
+    } catch (err) {
+      setError("An error occurred while logging in");
+      console.error(err);
     }
   };
 
   return (
-    <div style={{
-      height: '100vh',
-      backgroundColor: '#121212',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'white',
-      padding: '20px'
-    }}>
-      <motion.h2
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1 }}
-      >
-        Enter your username
-      </motion.h2>
-
-      <motion.input
-        initial={{ scale: 0.8 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.5 }}
+    <div style={{ textAlign: 'center', marginTop: '100px', color: 'white' }}>
+      <h2>Login to UJEMU DAO</h2>
+      <input
         type="text"
+        placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Enter your username"
-        style={{
-          padding: '12px',
-          fontSize: '16px',
-          borderRadius: '8px',
-          border: 'none',
-          marginTop: '20px',
-          textAlign: 'center',
-        }}
+        style={{ padding: '10px', margin: '10px', width: '200px' }}
       />
-
-      <motion.input
-        initial={{ scale: 0.8 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.5 }}
-        type="text"
-        value={profilePic}
-        onChange={(e) => setProfilePic(e.target.value)}
-        placeholder="Paste Profile Picture URL (optional)"
-        style={{
-          padding: '12px',
-          fontSize: '16px',
-          borderRadius: '8px',
-          border: 'none',
-          marginTop: '15px',
-          textAlign: 'center',
-        }}
+      <br />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        style={{ padding: '10px', margin: '10px', width: '200px' }}
       />
-
-      <motion.button
+      <br />
+      <button
         onClick={handleLogin}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 300 }}
         style={{
-          marginTop: '20px',
-          padding: '12px 24px',
-          fontSize: '18px',
+          padding: '10px 20px',
+          fontSize: '16px',
           backgroundColor: '#4CAF50',
-          color: 'white',
           border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
+          color: 'white',
+          borderRadius: '5px',
+          cursor: 'pointer'
         }}
       >
-        Start Playing
-      </motion.button>
+        Login / Register
+      </button>
+      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
     </div>
   );
 }
