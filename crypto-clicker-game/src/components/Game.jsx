@@ -1,3 +1,5 @@
+// Game.jsx Part 1
+
 import { motion } from 'framer-motion';
 import { ref, get, set, onValue, remove, child } from 'firebase/database';
 import { database } from '../firebase';
@@ -26,7 +28,6 @@ function Game({ user, onLogout }) {
     const userRef = ref(database, `players/${username}`);
     await set(userRef, {
       username,
-      password: '', // optional: avoid saving it back if not editing
       coins: clicks,
       level,
       multiplier,
@@ -70,7 +71,6 @@ function Game({ user, onLogout }) {
       console.error("Error loading player data:", error);
     }
   };
-
   useEffect(() => {
     if (user) {
       const cleanUsername = user.username.trim().toLowerCase();
@@ -191,7 +191,6 @@ function Game({ user, onLogout }) {
       }
     }
   };
-
   if (showLeaderboard) {
     return <Leaderboard players={players} onBack={() => setShowLeaderboard(false)} />;
   }
@@ -224,7 +223,6 @@ function Game({ user, onLogout }) {
       </div>
     );
   }
-
   return (
     <div style={{
       padding: "20px",
