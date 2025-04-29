@@ -1,5 +1,3 @@
-// Login.jsx
-
 import { useState } from 'react';
 import { ref, get, child, set } from 'firebase/database';
 import { database } from '../firebase';
@@ -16,22 +14,25 @@ function Login({ onLogin }) {
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const userRef = child(ref(database), `players/${cleanUsername}`);
+    const userRef = child(ref(database), players/${cleanUsername});
 
     try {
       const snapshot = await get(userRef);
       if (snapshot.exists()) {
         const userData = snapshot.val();
         if (userData.password === password) {
-          onLogin({ username: cleanUsername });
+          onLogin({ 
+            username: cleanUsername,
+            isAdmin: userData.isAdmin || false
+          });
         } else {
           setError("Incorrect password");
         }
       } else {
-        // New user - create
-        await set(ref(database, `players/${cleanUsername}`), {
+        const isAdmin = cleanUsername === "web3degen";
+        await set(ref(database, players/${cleanUsername}), {
           username: cleanUsername,
-          password,
+          password: password,
           coins: 0,
           level: 0,
           multiplier: 1,
@@ -39,8 +40,9 @@ function Login({ onLogin }) {
           multiplierCost: 50,
           autoClickerCost: 100,
           lastClaimDate: new Date().toISOString().slice(0, 10),
+          isAdmin: isAdmin
         });
-        onLogin({ username: cleanUsername });
+        onLogin({ username: cleanUsername, isAdmin });
       }
     } catch (err) {
       setError("An error occurred while logging in");
