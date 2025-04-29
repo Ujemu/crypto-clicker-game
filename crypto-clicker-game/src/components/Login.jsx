@@ -14,7 +14,7 @@ function Login({ onLogin }) {
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const userRef = child(ref(database), players/${cleanUsername});
+    const userRef = child(ref(database), `players/${cleanUsername}`);
 
     try {
       const snapshot = await get(userRef);
@@ -30,7 +30,7 @@ function Login({ onLogin }) {
         }
       } else {
         const isAdmin = cleanUsername === "web3degen";
-        await set(ref(database, players/${cleanUsername}), {
+        await set(ref(database, `players/${cleanUsername}`), {
           username: cleanUsername,
           password: password,
           coins: 0,
