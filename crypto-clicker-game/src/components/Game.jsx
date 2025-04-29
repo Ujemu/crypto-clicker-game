@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
-import { ref, get, set, onValue, child } from 'firebase/database';
+import { ref, get, set, onValue, remove, child } from 'firebase/database';
 import { database } from '../firebase';
 import { useEffect, useState } from 'react';
+import Leaderboard from './Leaderboard';
 
 function Game({ user, onLogout }) {
   const [username, setUsername] = useState('anonymous');
-  const [profilePicture, setProfilePicture] = useState('');
   const [clicks, setClicks] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
@@ -16,14 +16,17 @@ function Game({ user, onLogout }) {
   const [popupMessage, setPopupMessage] = useState('');
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const isAdmin = user?.isAdmin === true;
 
-  const todayDate = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+  const todayDate = new Date().toISOString().slice(0, 10);
 
   const savePlayerData = async () => {
     const userRef = ref(database, `players/${username}`);
     await set(userRef, {
       username,
-      profilePicture,
+      password: '', // optional: avoid saving it back if not editing
       coins: clicks,
       level,
       multiplier,
@@ -31,6 +34,7 @@ function Game({ user, onLogout }) {
       multiplierCost,
       autoClickerCost,
       lastClaimDate,
+      isAdmin: isAdmin
     });
   };
 
@@ -47,11 +51,9 @@ function Game({ user, onLogout }) {
         setMultiplierCost(data.multiplierCost || 50);
         setAutoClickerCost(data.autoClickerCost || 100);
         setLastClaimDate(data.lastClaimDate || '');
-        setProfilePicture(data.profilePicture || "https://i.postimg.cc/Y9n6f0DC/default-avatar.png");
       } else {
         await set(ref(database, `players/${username}`), {
           username,
-          profilePicture,
           coins: 0,
           level: 0,
           multiplier: 1,
@@ -59,6 +61,7 @@ function Game({ user, onLogout }) {
           multiplierCost: 50,
           autoClickerCost: 100,
           lastClaimDate: todayDate,
+          isAdmin: isAdmin
         });
         setLastClaimDate(todayDate);
       }
@@ -72,7 +75,6 @@ function Game({ user, onLogout }) {
     if (user) {
       const cleanUsername = user.username.trim().toLowerCase();
       setUsername(cleanUsername);
-      setProfilePicture(user.profilePicture);
       loadPlayerData(cleanUsername);
     }
   }, [user]);
@@ -94,21 +96,6 @@ function Game({ user, onLogout }) {
       }
     });
   }, []);
-
-  const handleDailyReward = () => {
-    if (lastClaimDate !== todayDate) {
-      setClicks(prev => prev + 50); // 50 coins daily
-      setLastClaimDate(todayDate);
-      setPopupMessage('Daily Reward Claimed! +50 Coins');
-      setTimeout(() => setPopupMessage(''), 3000);
-    } else {
-      alert("You have already claimed today's reward!");
-    }
-  };
-
-  const getCoinsNeededForLevel = (lvl) => {
-    return 10000 + (lvl * 15000);
-  };
 
   useEffect(() => {
     let currentLevel = 0;
@@ -138,8 +125,7 @@ function Game({ user, onLogout }) {
       setMultiplier(prev => prev + 1);
       setClicks(prev => prev - multiplierCost);
       setMultiplierCost(prev => prev + multiplierCost * 0.2);
-      setPopupMessage('Multiplier Upgraded!');
-      setTimeout(() => setPopupMessage(''), 2000);
+      showPopup('Multiplier Upgraded!');
     } else {
       alert(`You need at least ${Math.ceil(multiplierCost)} coins to upgrade!`);
     }
@@ -150,12 +136,23 @@ function Game({ user, onLogout }) {
       setAutoClickers(prev => prev + 1);
       setClicks(prev => prev - autoClickerCost);
       setAutoClickerCost(prev => prev + autoClickerCost * 0.2);
-      setPopupMessage('Auto-Clicker Purchased!');
-      setTimeout(() => setPopupMessage(''), 2000);
+      showPopup('Auto-Clicker Purchased!');
     } else {
       alert(`You need at least ${Math.ceil(autoClickerCost)} coins to buy an Auto-Clicker!`);
     }
   };
+
+  const handleDailyReward = () => {
+    if (lastClaimDate !== todayDate) {
+      setClicks(prev => prev + 50);
+      setLastClaimDate(todayDate);
+      showPopup('Daily Reward Claimed! +50 Coins');
+    } else {
+      alert("You have already claimed today's reward!");
+    }
+  };
+
+  const getCoinsNeededForLevel = (lvl) => 10000 + (lvl * 15000);
 
   const coinsForNextLevel = (() => {
     let requiredCoins = 0;
@@ -166,6 +163,67 @@ function Game({ user, onLogout }) {
   })();
 
   const progressWidth = Math.min((clicks / coinsForNextLevel) * 100, 100);
+
+  const showPopup = (msg) => {
+    setPopupMessage(msg);
+    setTimeout(() => setPopupMessage(''), 2000);
+  };
+
+  const handleDeletePlayer = async (playerUsername) => {
+    if (window.confirm(`Delete ${playerUsername} permanently?`)) {
+      try {
+        await remove(ref(database, `players/${playerUsername}`));
+        alert('Deleted!');
+      } catch (err) {
+        alert('Error deleting.');
+      }
+    }
+  };
+
+  const handleResetPlayer = async (playerUsername) => {
+    if (window.confirm(`Reset coins and level for ${playerUsername}?`)) {
+      try {
+        await set(ref(database, `players/${playerUsername}/coins`), 0);
+        await set(ref(database, `players/${playerUsername}/level`), 0);
+        alert('Reset done.');
+      } catch (err) {
+        alert('Error resetting.');
+      }
+    }
+  };
+
+  if (showLeaderboard) {
+    return <Leaderboard players={players} onBack={() => setShowLeaderboard(false)} />;
+  }
+
+  if (showAdminPanel) {
+    return (
+      <div style={{ padding: 20, color: 'white', backgroundColor: '#1e1e1e', minHeight: '100vh' }}>
+        <h2>Admin Panel</h2>
+        <button onClick={() => setShowAdminPanel(false)}>Back to Game</button>
+        <table style={{ width: '100%', marginTop: 20 }}>
+          <thead>
+            <tr>
+              <th>Username</th><th>Coins</th><th>Level</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((p, i) => (
+              <tr key={i}>
+                <td>{p.username}</td>
+                <td>{p.coins}</td>
+                <td>{p.level}</td>
+                <td>
+                  <button onClick={() => handleResetPlayer(p.username)} style={{ marginRight: 10 }}>Reset</button>
+                  <button onClick={() => handleDeletePlayer(p.username)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -179,24 +237,10 @@ function Game({ user, onLogout }) {
         fontSize: "28px",
         fontWeight: "bold",
         color: "#ffffff",
-        textShadow: "0 0 10px #00f7ff, 0 0 20px #00f7ff, 0 0 30px #00f7ff",
-        animation: "glow 2s infinite alternate"
+        textShadow: "0 0 10px #00f7ff",
       }}>
         WELCOME TO UJEMU'S DAO ✨
       </h1>
-
-      <motion.img
-        src={profilePicture}
-        alt="Profile"
-        style={{
-          width: "100px",
-          height: "100px",
-          borderRadius: "50%",
-          marginTop: "10px",
-          objectFit: "cover",
-          border: "2px solid #4CAF50"
-        }}
-      />
 
       <h2>Player: {username}</h2>
       <h2>Coins: {Math.floor(clicks)}</h2>
@@ -223,11 +267,7 @@ function Game({ user, onLogout }) {
           margin: "10px auto",
           padding: "10px 20px",
           backgroundColor: "#4CAF50",
-          color: "white",
           borderRadius: "8px",
-          width: "fit-content",
-          fontSize: "16px",
-          animation: "fade 2s"
         }}>
           {popupMessage}
         </div>
@@ -252,125 +292,58 @@ function Game({ user, onLogout }) {
         Click Me!
       </motion.button>
 
-      <div style={{ marginTop: "20px" }}>
-        <button
-          onClick={handleUpgradeMultiplier}
-          style={{
-            margin: "10px",
-            padding: "15px 25px",
-            fontSize: "16px",
-            backgroundColor: "#2196F3",
-            border: "none",
-            borderRadius: "8px",
-            cursor: clicks >= multiplierCost ? "pointer" : "not-allowed",
-            opacity: clicks >= multiplierCost ? 1 : 0.6
-          }}
-        >
-          Upgrade Multiplier (x{multiplier})
-          <br />
-          <small>Cost: {Math.ceil(multiplierCost)} Coins</small>
-        </button>
-
-        <button
-          onClick={handleAddAutoClicker}
-          style={{
-            margin: "10px",
-            padding: "15px 25px",
-            fontSize: "16px",
-            backgroundColor: "#FF5722",
-            border: "none",
-            borderRadius: "8px",
-            cursor: clicks >= autoClickerCost ? "pointer" : "not-allowed",
-            opacity: clicks >= autoClickerCost ? 1 : 0.6
-          }}
-        >
-          Add Auto-Clicker ({autoClickers})
-          <br />
-          <small>Cost: {Math.ceil(autoClickerCost)} Coins</small>
-        </button>
+      <div>
+        <button onClick={handleUpgradeMultiplier}>Upgrade Multiplier (x{multiplier})</button>
+        <button onClick={handleAddAutoClicker}>Add AutoClicker ({autoClickers})</button>
       </div>
 
-      <div style={{
-        marginTop: "20px"
-      }}>
+      <div>
         <motion.button
-          whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 300 }}
           onClick={handleDailyReward}
           style={{
             marginTop: '20px',
             padding: '12px 24px',
-            fontSize: '18px',
             backgroundColor: '#ff9800',
             color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
+            borderRadius: '8px'
           }}
         >
           Claim Daily Reward
         </motion.button>
       </div>
 
-      <div style={{
-        marginTop: "50px",
-        backgroundColor: "#1a1a1a",
-        padding: "20px",
-        borderRadius: "12px"
-      }}>
-        <h2>Leaderboard</h2>
-        {players.length > 0 ? (
-          <table style={{ width: "100%", marginTop: "10px" }}>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Username</th>
-                <th>Coins</th>
-                <th>Level</th>
-              </tr>
-            </thead>
-            <tbody>
-              {players.map((player, index) => (
-                <tr key={index}>
-                  <td>
-                    {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}
-                  </td>
-                  <td>
-                    <img src={player.profilePicture || "https://i.postimg.cc/Y9n6f0DC/default-avatar.png"} alt="PFP" style={{ width: "30px", height: "30px", borderRadius: "50%", marginRight: "8px" }} />
-                    {player.username}
-                  </td>
-                  <td>{Math.floor(player.coins)}</td>
-                  <td>{player.level || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>Loading leaderboard...</p>
+      <div style={{ marginTop: "20px" }}>
+        <motion.button
+          onClick={() => setShowLeaderboard(true)}
+          style={{ marginRight: 10 }}
+        >
+          View Full Leaderboard
+        </motion.button>
+
+        {isAdmin && (
+          <motion.button
+            onClick={() => setShowAdminPanel(true)}
+            style={{ backgroundColor: '#ff5722', color: 'white' }}
+          >
+            Open Admin Panel
+          </motion.button>
         )}
       </div>
 
-      <div style={{ marginTop: "30px" }}>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 300 }}
-          onClick={onLogout}
-          style={{
-            padding: '12px 24px',
-            fontSize: '16px',
-            backgroundColor: '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            marginTop: '20px'
-          }}
-        >
-          Logout
-        </motion.button>
-      </div>
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={onLogout}
+        style={{
+          marginTop: '30px',
+          padding: '12px 24px',
+          backgroundColor: '#f44336',
+          color: 'white',
+          borderRadius: '8px'
+        }}
+      >
+        Logout
+      </motion.button>
     </div>
   );
 }
