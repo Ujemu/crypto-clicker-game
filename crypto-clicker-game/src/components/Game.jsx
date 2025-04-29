@@ -35,7 +35,6 @@ function Game({ user, onLogout }) {
       multiplierCost,
       autoClickerCost,
       lastClaimDate,
-      isAdmin: isAdmin
     });
   };
 
