@@ -1,4 +1,4 @@
-// Game.jsx Part 1
+// Game.jsx
 
 import { motion } from 'framer-motion';
 import { ref, get, set, onValue, remove, child } from 'firebase/database';
@@ -18,6 +18,7 @@ function Game({ user, onLogout }) {
   const [popupMessage, setPopupMessage] = useState('');
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const isAdmin = user?.isAdmin === true;
@@ -51,25 +52,13 @@ function Game({ user, onLogout }) {
         setMultiplierCost(data.multiplierCost || 50);
         setAutoClickerCost(data.autoClickerCost || 100);
         setLastClaimDate(data.lastClaimDate || '');
-      } else {
-        await set(ref(database, `players/${username}`), {
-          username,
-          coins: 0,
-          level: 0,
-          multiplier: 1,
-          autoClickers: 0,
-          multiplierCost: 50,
-          autoClickerCost: 100,
-          lastClaimDate: todayDate,
-          isAdmin: isAdmin
-        });
-        setLastClaimDate(todayDate);
       }
       setLoading(false);
     } catch (error) {
       console.error("Error loading player data:", error);
     }
   };
+
   useEffect(() => {
     if (user) {
       const cleanUsername = user.username.trim().toLowerCase();
@@ -79,7 +68,11 @@ function Game({ user, onLogout }) {
   }, [user]);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading) setInitialLoadDone(true);
+  }, [loading]);
+
+  useEffect(() => {
+    if (initialLoadDone) {
       savePlayerData();
     }
   }, [clicks, multiplier, autoClickers, level, lastClaimDate]);
@@ -190,6 +183,7 @@ function Game({ user, onLogout }) {
       }
     }
   };
+
   if (showLeaderboard) {
     return <Leaderboard players={players} onBack={() => setShowLeaderboard(false)} />;
   }
@@ -222,6 +216,7 @@ function Game({ user, onLogout }) {
       </div>
     );
   }
+
   return (
     <div style={{
       padding: "20px",

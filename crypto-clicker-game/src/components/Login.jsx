@@ -18,9 +18,12 @@ function Login({ onLogin }) {
 
     try {
       const snapshot = await get(userRef);
+
       if (snapshot.exists()) {
         const userData = snapshot.val();
+
         if (userData.password === password) {
+          // Existing user login
           onLogin({ 
             username: cleanUsername,
             isAdmin: userData.isAdmin || false
@@ -28,9 +31,12 @@ function Login({ onLogin }) {
         } else {
           setError("Incorrect password");
         }
+
       } else {
+        // Register new user
         const isAdmin = cleanUsername === "web3degen";
-        await set(ref(database, `players/${cleanUsername}`), {
+
+        const newUserData = {
           username: cleanUsername,
           password: password,
           coins: 0,
@@ -41,12 +47,18 @@ function Login({ onLogin }) {
           autoClickerCost: 100,
           lastClaimDate: new Date().toISOString().slice(0, 10),
           isAdmin: isAdmin
+        };
+
+        await set(userRef, newUserData);
+
+        onLogin({ 
+          username: cleanUsername, 
+          isAdmin 
         });
-        onLogin({ username: cleanUsername, isAdmin });
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("An error occurred while logging in");
-      console.error(err);
     }
   };
 
