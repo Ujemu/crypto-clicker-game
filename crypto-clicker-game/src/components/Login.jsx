@@ -1,64 +1,73 @@
 import { useState } from 'react';
-import { ref, get, child, set } from 'firebase/database';
-import { database } from '../firebase';
+import { auth, db } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function Login({ onLogin }) {
-  const [username, setUsername] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      setError("Please enter both username and password");
+    if (!emailOrUsername || !password) {
+      setError("Please enter both username/email and password");
       return;
     }
 
-    const cleanUsername = username.trim().toLowerCase();
-    const userRef = child(ref(database), `players/${cleanUsername}`);
+    const cleanInput = emailOrUsername.trim().toLowerCase();
+    const email = cleanInput.includes("@") ? cleanInput : `${cleanInput}@ujemu.com; // use email format for Firebase Auth`
 
     try {
-      const snapshot = await get(userRef);
+      // Try to log in
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      if (snapshot.exists()) {
-        const userData = snapshot.val();
+      // Fetch additional user data
+      const userDoc = await getDoc(doc(db, "players", user.uid));
+      const userData = userDoc.exists() ? userDoc.data() : {};
 
-        if (userData.password === password) {
-          // Existing user login
-          onLogin({ 
-            username: cleanUsername,
-            isAdmin: userData.isAdmin || false
+      onLogin({
+        uid: user.uid,
+        username: userData.username || cleanInput,
+        isAdmin: userData.isAdmin || false,
+        ...userData
+      });
+
+    } catch (loginError) {
+      // If user not found, register them
+      if (loginError.code === "auth/user-not-found") {
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+
+          const isAdmin = cleanInput === "web3degen";
+
+          const newUserData = {
+            username: cleanInput,
+            coins: 0,
+            level: 0,
+            multiplier: 1,
+            autoClickers: 0,
+            multiplierCost: 50,
+            autoClickerCost: 100,
+            lastClaimDate: new Date().toISOString().slice(0, 10),
+            isAdmin
+          };
+
+          await setDoc(doc(db, "players", user.uid), newUserData);
+
+          onLogin({
+            uid: user.uid,
+            username: cleanInput,
+            isAdmin,
+            ...newUserData
           });
-        } else {
-          setError("Incorrect password");
+        } catch (registerError) {
+          setError("Registration failed: " + registerError.message);
         }
-
       } else {
-        // Register new user
-        const isAdmin = cleanUsername === "web3degen";
-
-        const newUserData = {
-          username: cleanUsername,
-          password: password,
-          coins: 0,
-          level: 0,
-          multiplier: 1,
-          autoClickers: 0,
-          multiplierCost: 50,
-          autoClickerCost: 100,
-          lastClaimDate: new Date().toISOString().slice(0, 10),
-          isAdmin: isAdmin
-        };
-
-        await set(userRef, newUserData);
-
-        onLogin({ 
-          username: cleanUsername, 
-          isAdmin 
-        });
+        setError("Login failed: " + loginError.message);
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred while logging in");
     }
   };
 
@@ -67,9 +76,9 @@ function Login({ onLogin }) {
       <h2>Login to UJEMU DAO</h2>
       <input
         type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Username or Email"
+        value={emailOrUsername}
+        onChange={(e) => setEmailOrUsername(e.target.value)}
         style={{ padding: '10px', margin: '10px', width: '200px' }}
       />
       <br />

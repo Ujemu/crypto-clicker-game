@@ -1,8 +1,6 @@
-// Game.jsx
-
 import { motion } from 'framer-motion';
-import { ref, get, set, onValue, remove, child } from 'firebase/database';
-import { database } from '../firebase';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useEffect, useState } from 'react';
 import Leaderboard from './Leaderboard';
 
@@ -22,12 +20,13 @@ function Game({ user, onLogout }) {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const isAdmin = user?.isAdmin === true;
+  const uid = user?.uid;
 
   const todayDate = new Date().toISOString().slice(0, 10);
 
   const savePlayerData = async () => {
-    const userRef = ref(database, `players/${username}`);
-    await set(userRef, {
+    if (!uid) return;
+    await setDoc(doc(db, "players", uid), {
       username,
       coins: clicks,
       level,
@@ -36,15 +35,17 @@ function Game({ user, onLogout }) {
       multiplierCost,
       autoClickerCost,
       lastClaimDate,
+      isAdmin
     });
   };
 
-  const loadPlayerData = async (username) => {
-    const dbRef = ref(database);
+  const loadPlayerData = async () => {
+    if (!uid) return;
     try {
-      const snapshot = await get(child(dbRef, `players/${username}`));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
+      const docSnap = await getDoc(doc(db, "players", uid));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUsername(data.username || 'anonymous');
         setClicks(data.coins || 0);
         setLevel(data.level || 0);
         setMultiplier(data.multiplier || 1);
@@ -54,39 +55,33 @@ function Game({ user, onLogout }) {
         setLastClaimDate(data.lastClaimDate || '');
       }
       setLoading(false);
-    } catch (error) {
-      console.error("Error loading player data:", error);
+    } catch (err) {
+      console.error("Error loading player data:", err);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      const cleanUsername = user.username.trim().toLowerCase();
-      setUsername(cleanUsername);
-      loadPlayerData(cleanUsername);
-    }
-  }, [user]);
+    loadPlayerData();
+  }, [uid]);
 
   useEffect(() => {
     if (!loading) setInitialLoadDone(true);
   }, [loading]);
 
   useEffect(() => {
-    if (initialLoadDone) {
-      savePlayerData();
-    }
+    if (initialLoadDone) savePlayerData();
   }, [clicks, multiplier, autoClickers, level, lastClaimDate]);
 
   useEffect(() => {
-    const playersRef = ref(database, 'players/');
-    onValue(playersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
+    const unsub = onSnapshot(doc(db, "leaderboard", "global"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
         const playersArray = Object.values(data);
         playersArray.sort((a, b) => b.coins - a.coins);
         setPlayers(playersArray);
       }
-    });
+    }, (err) => console.error("Error loading leaderboard:", err));
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -161,10 +156,10 @@ function Game({ user, onLogout }) {
     setTimeout(() => setPopupMessage(''), 2000);
   };
 
-  const handleDeletePlayer = async (playerUsername) => {
-    if (window.confirm(`Delete ${playerUsername} permanently?`)) {
+  const handleDeletePlayer = async (targetUid) => {
+    if (window.confirm(`Delete this player permanently?`)) {
       try {
-        await remove(ref(database, `players/${playerUsername}`));
+        await deleteDoc(doc(db, "players", targetUid));
         alert('Deleted!');
       } catch (err) {
         alert('Error deleting.');
@@ -172,11 +167,13 @@ function Game({ user, onLogout }) {
     }
   };
 
-  const handleResetPlayer = async (playerUsername) => {
-    if (window.confirm(`Reset coins and level for ${playerUsername}?`)) {
+  const handleResetPlayer = async (targetUid) => {
+    if (window.confirm(`Reset coins and level for this player?`)) {
       try {
-        await set(ref(database, `players/${playerUsername}/coins`), 0);
-        await set(ref(database, `players/${playerUsername}/level`), 0);
+        await updateDoc(doc(db, "players", targetUid), {
+          coins: 0,
+          level: 0
+        });
         alert('Reset done.');
       } catch (err) {
         alert('Error resetting.');
@@ -206,8 +203,8 @@ function Game({ user, onLogout }) {
                 <td>{p.coins}</td>
                 <td>{p.level}</td>
                 <td>
-                  <button onClick={() => handleResetPlayer(p.username)} style={{ marginRight: 10 }}>Reset</button>
-                  <button onClick={() => handleDeletePlayer(p.username)}>Delete</button>
+                  <button onClick={() => handleResetPlayer(p.uid)} style={{ marginRight: 10 }}>Reset</button>
+                  <button onClick={() => handleDeletePlayer(p.uid)}>Delete</button>
                 </td>
               </tr>
             ))}
