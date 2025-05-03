@@ -1,7 +1,8 @@
 // Import necessary Firebase modules
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getDatabase } from "firebase/database"; // Needed for leaderboard and user data
+import { getDatabase } from "firebase/database";
+import { getFirestore } from "firebase/firestore";
 
 // Your Firebase project configuration
 const firebaseConfig = {
@@ -11,12 +12,13 @@ const firebaseConfig = {
   storageBucket: "coinclickergame.appspot.com",
   messagingSenderId: "746511658244",
   appId: "1:746511658244:web:237c406ccf0627bf5ef451",
-  databaseURL: "https://coinclickergame-default-rtdb.firebaseio.com" // VERY IMPORTANT for realtime database
+  databaseURL: "https://coinclickergame-default-rtdb.firebaseio.com"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export Authentication and Realtime Database services
+// Export services
 export const auth = getAuth(app);
 export const database = getDatabase(app);
+export const db = getFirestore(app); // Now correctly exported
