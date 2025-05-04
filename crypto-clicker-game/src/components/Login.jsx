@@ -1,43 +1,80 @@
 import { useState } from 'react';
-import { ref, get, child } from 'firebase/database';
-import { database } from '../firebase';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { motion } from 'framer-motion';
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    const cleanUsername = username.trim().toLowerCase();
-    const userRef = ref(database);
+    if (!username) {
+      setError('Please enter your username.');
+      return;
+    }
+
+    const usernameRef = doc(db, 'usernames', username.toLowerCase());
+    const docSnap = await getDoc(usernameRef);
+
+    if (!docSnap.exists()) {
+      setError('No account found for that username.');
+      return;
+    }
+
+    const { email } = docSnap.data();
+    const auth = getAuth();
 
     try {
-      const usernameSnap = await get(child(userRef, `usernames/${cleanUsername}`));
-      if (!usernameSnap.exists() || usernameSnap.val() !== email) {
-        setError("Invalid email or username");
-        return;
-      }
-
-      const userSnap = await get(child(userRef, `users/${email}`));
-      if (!userSnap.exists()) {
-        setError("User data not found");
-        return;
-      }
-
-      onLogin({ email, username: cleanUsername });
+      const userCredential = await signInWithEmailAndPassword(auth, email, 'dummy-password');
+      const user = userCredential.user;
+      onLogin({ uid: user.uid, username });
     } catch (err) {
-      console.error(err);
-      setError("Login failed");
+      console.error(err.message);
+      setError('Login failed.');
     }
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-      <button onClick={handleLogin}>Log In</button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '70vh',
+    }}>
+      <h2 style={{ color: 'white' }}>Login</h2>
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        style={{
+          margin: '10px',
+          padding: '8px',
+          borderRadius: '5px',
+          border: '1px solid #ccc',
+          width: '200px'
+        }}
+      />
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleLogin}
+        style={{
+          padding: '10px 20px',
+          fontWeight: 'bold',
+          marginTop: '10px',
+          border: 'none',
+          borderRadius: '5px',
+          backgroundColor: '#00ff99',
+          color: '#000',
+          cursor: 'pointer'
+        }}
+      >
+        Log In
+      </motion.button>
+      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
     </div>
   );
 }

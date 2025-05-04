@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { motion } from 'framer-motion';
 
 function Signup({ onSignup }) {
   const [email, setEmail] = useState('');
@@ -37,25 +38,58 @@ function Signup({ onSignup }) {
   };
 
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '70vh',
+    }}>
       <h2 style={{ color: 'white' }}>Sign Up</h2>
       <input
         type="email"
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        style={{ margin: '5px' }}
+        style={{
+          margin: '10px',
+          padding: '8px',
+          borderRadius: '5px',
+          border: '1px solid #ccc',
+          width: '200px'
+        }}
       />
       <input
         type="text"
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
-        style={{ margin: '5px' }}
+        style={{
+          margin: '10px',
+          padding: '8px',
+          borderRadius: '5px',
+          border: '1px solid #ccc',
+          width: '200px'
+        }}
       />
-      <br />
-      <button onClick={handleSignup}>Register</button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleSignup}
+        style={{
+          padding: '10px 20px',
+          fontWeight: 'bold',
+          marginTop: '10px',
+          border: 'none',
+          borderRadius: '5px',
+          backgroundColor: '#00ff99',
+          color: '#000',
+          cursor: 'pointer'
+        }}
+      >
+        Register
+      </motion.button>
+      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
     </div>
   );
 }
