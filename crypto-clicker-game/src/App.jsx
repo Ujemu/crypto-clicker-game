@@ -1,26 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Game from './components/Game';
+import Splash from './components/Splash';
 
 function App() {
   const [user, setUser] = useState(null);
   const [showSignup, setShowSignup] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 10000); // Show splash for 10 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLogout = () => {
     setUser(null);
     setShowSignup(false);
   };
 
+  if (showSplash) return <Splash />;
+
   return (
-    <div style={{ backgroundColor: '#000', minHeight: '100vh', padding: '20px' }}>
+    <div
+      style={{
+        backgroundColor: '#000',
+        minHeight: '100vh',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
       {!user ? (
         showSignup ? (
           <>
             <Signup onSignup={setUser} />
-            <p style={{ color: 'white', textAlign: 'center', marginTop: '10px' }}>
+            <p style={{ color: 'white', marginTop: '10px' }}>
               Already have an account?{' '}
-              <button onClick={() => setShowSignup(false)} style={{ background: 'none', color: '#00f', border: 'none', cursor: 'pointer' }}>
+              <button
+                onClick={() => setShowSignup(false)}
+                style={{
+                  background: 'none',
+                  color: '#00f',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
                 Log in
               </button>
             </p>
@@ -28,9 +59,18 @@ function App() {
         ) : (
           <>
             <Login onLogin={setUser} />
-            <p style={{ color: 'white', textAlign: 'center', marginTop: '10px' }}>
+            <p style={{ color: 'white', marginTop: '10px' }}>
               Don’t have an account?{' '}
-              <button onClick={() => setShowSignup(true)} style={{ background: 'none', color: '#00f', border: 'none', cursor: 'pointer' }}>
+              <button
+                onClick={() => setShowSignup(true)}
+                style={{
+                  background: 'none',
+                  color: '#00f',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
                 Sign up
               </button>
             </p>
