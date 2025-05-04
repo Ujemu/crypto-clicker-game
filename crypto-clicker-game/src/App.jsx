@@ -9,10 +9,11 @@ function App() {
   const [showSignup, setShowSignup] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
 
+  // Splash screen effect
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 10000); // Show splash for 10 seconds
+    }, 10000); // 10 seconds
 
     return () => clearTimeout(timer);
   }, []);
@@ -22,6 +23,7 @@ function App() {
     setShowSignup(false);
   };
 
+  // Show splash screen first
   if (showSplash) return <Splash />;
 
   return (
@@ -36,6 +38,11 @@ function App() {
         alignItems: 'center',
       }}
     >
+      {/* Status Message */}
+      <p style={{ color: 'lime', fontWeight: 'bold', textAlign: 'center' }}>
+        LIVE BUILD — Email + Username Login Active!
+      </p>
+
       {!user ? (
         showSignup ? (
           <>

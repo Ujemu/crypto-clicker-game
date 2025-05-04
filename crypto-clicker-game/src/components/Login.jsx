@@ -9,40 +9,36 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!username) {
+    const cleanUsername = username.trim().toLowerCase();
+
+    if (!cleanUsername) {
       setError('Please enter your username.');
       return;
     }
 
-    const usernameRef = doc(db, 'usernames', username.toLowerCase());
-    const docSnap = await getDoc(usernameRef);
-
-    if (!docSnap.exists()) {
-      setError('No account found for that username.');
-      return;
-    }
-
-    const { email } = docSnap.data();
-    const auth = getAuth();
-
     try {
+      const usernameRef = doc(db, 'usernames', cleanUsername);
+      const docSnap = await getDoc(usernameRef);
+
+      if (!docSnap.exists()) {
+        setError('No account found for that username.');
+        return;
+      }
+
+      const { email } = docSnap.data();
+      const auth = getAuth();
       const userCredential = await signInWithEmailAndPassword(auth, email, 'dummy-password');
       const user = userCredential.user;
-      onLogin({ uid: user.uid, username });
+
+      onLogin({ uid: user.uid, username: cleanUsername });
     } catch (err) {
-      console.error(err.message);
-      setError('Login failed.');
+      console.error('Login error:', err.message);
+      setError('Login failed. Please try again.');
     }
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '70vh',
-    }}>
+    <div style={{ textAlign: 'center' }}>
       <h2 style={{ color: 'white' }}>Login</h2>
       <input
         type="text"
@@ -50,26 +46,27 @@ function Login({ onLogin }) {
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         style={{
-          margin: '10px',
-          padding: '8px',
+          padding: '10px',
+          margin: '10px 0',
+          width: '250px',
+          fontSize: '16px',
           borderRadius: '5px',
-          border: '1px solid #ccc',
-          width: '200px'
         }}
       />
+      <br />
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
         onClick={handleLogin}
         style={{
           padding: '10px 20px',
           fontWeight: 'bold',
-          marginTop: '10px',
-          border: 'none',
+          fontSize: '16px',
           borderRadius: '5px',
-          backgroundColor: '#00ff99',
-          color: '#000',
-          cursor: 'pointer'
+          backgroundColor: '#00f',
+          color: '#fff',
+          border: 'none',
+          cursor: 'pointer',
         }}
       >
         Log In

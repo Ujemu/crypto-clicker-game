@@ -15,24 +15,25 @@ function Signup({ onSignup }) {
       return;
     }
 
-    const usernameRef = doc(db, 'usernames', username.toLowerCase());
-
-    const docSnap = await getDoc(usernameRef);
-    if (docSnap.exists()) {
-      setError('That username is already registered. Please choose another.');
-      return;
-    }
+    const cleanUsername = username.trim().toLowerCase();
+    const usernameRef = doc(db, 'usernames', cleanUsername);
 
     try {
+      const existing = await getDoc(usernameRef);
+      if (existing.exists()) {
+        setError('That username is already registered. Please choose another.');
+        return;
+      }
+
       const auth = getAuth();
       const userCredential = await createUserWithEmailAndPassword(auth, email, 'dummy-password');
       const user = userCredential.user;
 
       await setDoc(usernameRef, { email });
 
-      onSignup({ uid: user.uid, username });
+      onSignup({ uid: user.uid, username: cleanUsername });
     } catch (err) {
-      console.error(err.message);
+      console.error('Signup error:', err.message);
       setError('Signup failed. Try again.');
     }
   };

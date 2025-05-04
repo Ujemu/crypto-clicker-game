@@ -15,7 +15,7 @@ function Leaderboard({ onBack }) {
       });
 
       // Sort by coins descending
-      playerList.sort((a, b) => b.coins - a.coins);
+      playerList.sort((a, b) => (b.coins || 0) - (a.coins || 0));
       setPlayers(playerList);
     };
 
@@ -99,9 +99,9 @@ function Leaderboard({ onBack }) {
                     alt="PFP" 
                     style={{ width: "30px", height: "30px", borderRadius: "50%", marginRight: "8px" }} 
                   />
-                  {player.username}
+                  {player.username || 'Anonymous'}
                 </td>
-                <td style={{ padding: "10px" }}>{Math.floor(player.coins)}</td>
+                <td style={{ padding: "10px" }}>{Math.floor(player.coins || 0)}</td>
                 <td style={{ padding: "10px" }}>{player.level || 0}</td>
               </tr>
             ))}

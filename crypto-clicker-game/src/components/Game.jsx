@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { ref, get, set, onValue } from 'firebase/database';
-import { database } from '../firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import Leaderboard from './Leaderboard';
 
 function Game({ user, onLogout }) {
@@ -15,13 +15,15 @@ function Game({ user, onLogout }) {
 
   const { email, username } = user || {};
 
+  // Load user data from Firestore
   useEffect(() => {
     if (!email) return;
 
-    const userRef = ref(database, `users/${email}`);
-    const unsubscribe = onValue(userRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
+    const userDoc = doc(db, 'players', email);
+
+    const unsubscribe = onSnapshot(userDoc, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
         setClicks(data.coins || 0);
         setMultiplier(data.multiplier || 1);
         setAutoClickers(data.autoClickers || 0);
@@ -32,11 +34,12 @@ function Game({ user, onLogout }) {
     return () => unsubscribe();
   }, [email]);
 
+  // Save data to Firestore on state change
   useEffect(() => {
     if (!email) return;
 
-    const userRef = ref(database, `users/${email}`);
-    set(userRef, {
+    const userDoc = doc(db, 'players', email);
+    setDoc(userDoc, {
       email,
       username,
       coins: clicks,
@@ -49,9 +52,7 @@ function Game({ user, onLogout }) {
   const handleClick = () => {
     const newClicks = clicks + multiplier;
     setClicks(newClicks);
-
-    const levelUp = Math.floor(newClicks / 100);
-    setLevel(levelUp + 1);
+    setLevel(Math.floor(newClicks / 100) + 1);
   };
 
   const handleUpgradeMultiplier = () => {
