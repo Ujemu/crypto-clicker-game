@@ -1,32 +1,13 @@
-import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+// Leaderboard.jsx
+
 import { motion } from 'framer-motion';
 
-function Leaderboard({ onBack }) {
-  const [players, setPlayers] = useState([]);
-
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      const querySnapshot = await getDocs(collection(db, "players"));
-      const playerList = [];
-      querySnapshot.forEach((doc) => {
-        playerList.push(doc.data());
-      });
-
-      // Sort by coins descending
-      playerList.sort((a, b) => b.coins - a.coins);
-      setPlayers(playerList);
-    };
-
-    fetchPlayers();
-  }, []);
-
+function Leaderboard({ players, onBack }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
+      initial={{ opacity: 0, y: 50 }}    // Start: invisible and lower
+      animate={{ opacity: 1, y: 0 }}      // Animate to: fully visible and at position
+      transition={{ duration: 0.8, ease: "easeOut" }} // Duration and easing
       style={{
         padding: "20px",
         textAlign: "center",
