@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ref, get, set, child } from 'firebase/database';
-import { database } from '../firebase';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 function Signup({ onSignup }) {
   const [email, setEmail] = useState('');
@@ -9,43 +10,51 @@ function Signup({ onSignup }) {
 
   const handleSignup = async () => {
     if (!email || !username) {
-      setError("Please fill both fields");
+      setError('Please enter both email and username.');
       return;
     }
 
-    const cleanUsername = username.trim().toLowerCase();
-    const userRef = ref(database);
+    const usernameRef = doc(db, 'usernames', username.toLowerCase());
+
+    const docSnap = await getDoc(usernameRef);
+    if (docSnap.exists()) {
+      setError('That username is already registered. Please choose another.');
+      return;
+    }
 
     try {
-      const usernameSnap = await get(child(userRef, `usernames/${cleanUsername}`));
-      if (usernameSnap.exists()) {
-        setError("Username already taken");
-        return;
-      }
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, 'dummy-password');
+      const user = userCredential.user;
 
-      await set(child(userRef, `users/${email}`), {
-        email,
-        username: cleanUsername,
-        coins: 0,
-        multiplier: 1,
-        autoClickers: 0,
-        level: 1,
-      });
+      await setDoc(usernameRef, { email });
 
-      await set(child(userRef, `usernames/${cleanUsername}`), email);
-      onSignup({ email, username: cleanUsername });
+      onSignup({ uid: user.uid, username });
     } catch (err) {
-      console.error(err);
-      setError("Signup failed");
+      console.error(err.message);
+      setError('Signup failed. Try again.');
     }
   };
 
   return (
-    <div>
-      <h2>Signup</h2>
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-      <button onClick={handleSignup}>Sign Up</button>
+    <div style={{ textAlign: 'center' }}>
+      <h2 style={{ color: 'white' }}>Sign Up</h2>
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        style={{ margin: '5px' }}
+      />
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        style={{ margin: '5px' }}
+      />
+      <br />
+      <button onClick={handleSignup}>Register</button>
       {error && <p style={{ color: 'red' }}>{error}</p>}
     </div>
   );
