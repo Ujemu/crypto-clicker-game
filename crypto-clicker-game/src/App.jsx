@@ -14,26 +14,25 @@ function App() {
 
   return (
     <div style={{ backgroundColor: '#000', minHeight: '100vh', padding: '20px' }}>
-      {/* Test Message */}
-      <p style={{ color: 'lime', textAlign: 'center', fontWeight: 'bold' }}>
-        LIVE BUILD — Email + Username Login Active!
-      </p>
-
       {!user ? (
         showSignup ? (
           <>
             <Signup onSignup={setUser} />
-            <p style={{ color: 'white' }}>
+            <p style={{ color: 'white', textAlign: 'center', marginTop: '10px' }}>
               Already have an account?{' '}
-              <button onClick={() => setShowSignup(false)}>Log in</button>
+              <button onClick={() => setShowSignup(false)} style={{ background: 'none', color: '#00f', border: 'none', cursor: 'pointer' }}>
+                Log in
+              </button>
             </p>
           </>
         ) : (
           <>
             <Login onLogin={setUser} />
-            <p style={{ color: 'white' }}>
+            <p style={{ color: 'white', textAlign: 'center', marginTop: '10px' }}>
               Don’t have an account?{' '}
-              <button onClick={() => setShowSignup(true)}>Sign up</button>
+              <button onClick={() => setShowSignup(true)} style={{ background: 'none', color: '#00f', border: 'none', cursor: 'pointer' }}>
+                Sign up
+              </button>
             </p>
           </>
         )
