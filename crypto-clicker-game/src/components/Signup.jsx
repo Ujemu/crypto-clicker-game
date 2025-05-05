@@ -34,7 +34,8 @@ function Signup({ onSignup }) {
 
       onSignup({ uid: user.uid, username: cleanUsername });
     } catch (err) {
-      console.error('Signup error:', err.message);
+      console.error('Signup error:', err.code, err.message); 
+  
       setError('Signup failed. Try again.');
     }
   };
