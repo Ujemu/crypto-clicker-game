@@ -1,133 +1,101 @@
-import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, get, update } from 'firebase/database';
+import { database } from '../firebase';
+import { motion } from 'framer-motion';
 import Leaderboard from './Leaderboard';
 
 function Game({ user, onLogout }) {
-  const [clicks, setClicks] = useState(0);
-  const [multiplier, setMultiplier] = useState(1);
-  const [autoClickers, setAutoClickers] = useState(0);
-  const [level, setLevel] = useState(1);
-  const [multiplierCost, setMultiplierCost] = useState(50);
-  const [autoClickerCost, setAutoClickerCost] = useState(100);
-  const [popupMessage, setPopupMessage] = useState('');
+  const [coins, setCoins] = useState(0);
+  const [lastClaim, setLastClaim] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-  const { email, username } = user || {};
-
-  // Load user data from Firestore
   useEffect(() => {
-    if (!email) return;
-
-    const userDoc = doc(db, 'players', email);
-
-    const unsubscribe = onSnapshot(userDoc, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setClicks(data.coins || 0);
-        setMultiplier(data.multiplier || 1);
-        setAutoClickers(data.autoClickers || 0);
-        setLevel(data.level || 1);
+    const userRef = ref(database, `players/${user.username}`);
+    get(userRef).then(snapshot => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setCoins(data.coins || 0);
+        setLastClaim(data.lastClaim || null);
       }
     });
+  }, [user.username]);
 
-    return () => unsubscribe();
-  }, [email]);
+  const handleDailyClaim = async () => {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
 
-  // Save data to Firestore on state change
-  useEffect(() => {
-    if (!email) return;
+    if (lastClaim && now - lastClaim < oneDay) {
+      alert('You’ve already claimed your daily reward. Come back later!');
+      return;
+    }
 
-    const userDoc = doc(db, 'players', email);
-    setDoc(userDoc, {
-      email,
-      username,
-      coins: clicks,
-      multiplier,
-      autoClickers,
-      level,
+    const newCoins = coins + 50;
+    setCoins(newCoins);
+    setLastClaim(now);
+
+    await update(ref(database, `players/${user.username}`), {
+      coins: newCoins,
+      lastClaim: now
     });
-  }, [clicks, multiplier, autoClickers, level, email, username]);
-
-  const handleClick = () => {
-    const newClicks = clicks + multiplier;
-    setClicks(newClicks);
-    setLevel(Math.floor(newClicks / 100) + 1);
   };
 
-  const handleUpgradeMultiplier = () => {
-    if (clicks >= multiplierCost) {
-      setClicks(prev => prev - multiplierCost);
-      setMultiplier(prev => prev + 1);
-      setMultiplierCost(prev => Math.floor(prev * 1.5));
-      showPopup("Multiplier upgraded!");
-    }
-  };
-
-  const handleBuyAutoClicker = () => {
-    if (clicks >= autoClickerCost) {
-      setClicks(prev => prev - autoClickerCost);
-      setAutoClickers(prev => prev + 1);
-      setAutoClickerCost(prev => Math.floor(prev * 1.8));
-      showPopup("Auto-clicker purchased!");
-    }
-  };
-
-  const showPopup = (msg) => {
-    setPopupMessage(msg);
-    setTimeout(() => setPopupMessage(''), 2000);
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setClicks(prev => prev + autoClickers);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [autoClickers]);
-
-  if (!email || !username) {
-    return <p style={{ color: 'white', textAlign: 'center' }}>Loading user...</p>;
+  if (showLeaderboard) {
+    return <Leaderboard onBack={() => setShowLeaderboard(false)} />;
   }
 
   return (
     <div style={{ textAlign: 'center', color: 'white' }}>
-      <h2>Welcome, {username}</h2>
-      <motion.h1 animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}>
-        Coins: {clicks}
-      </motion.h1>
+      <motion.h2
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1 }}
+        style={{ marginBottom: '10px' }}
+      >
+        Welcome To Ujemu's Dao ✨
+      </motion.h2>
+      <h3 style={{ color: '#00ff99' }}>{user.displayName}</h3>
 
-      <motion.button whileTap={{ scale: 0.9 }} onClick={handleClick}>
-        Click Coin
+      <p style={{ fontSize: '18px', marginTop: '10px' }}>Coins: {coins}</p>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={handleDailyClaim}
+        style={buttonStyle}
+      >
+        Claim Daily Points
       </motion.button>
 
-      <div style={{ marginTop: '20px' }}>
-        <button onClick={handleUpgradeMultiplier}>Upgrade Multiplier ({multiplierCost})</button>
-        <button onClick={handleBuyAutoClicker}>Buy AutoClicker ({autoClickerCost})</button>
-      </div>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setShowLeaderboard(true)}
+        style={buttonStyle}
+      >
+        View Leaderboard
+      </motion.button>
 
-      <p>Multiplier: {multiplier}</p>
-      <p>AutoClickers: {autoClickers}</p>
-      <p>Level: {level}</p>
-
-      {popupMessage && (
-        <motion.div
-          style={{ marginTop: '10px', background: '#333', padding: '10px', borderRadius: '8px' }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          {popupMessage}
-        </motion.div>
-      )}
-
-      <button style={{ marginTop: '30px' }} onClick={onLogout}>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onLogout}
+        style={{ ...buttonStyle, backgroundColor: '#ff5555' }}
+      >
         Logout
-      </button>
-
-      <Leaderboard />
+      </motion.button>
     </div>
   );
 }
+
+const buttonStyle = {
+  margin: '10px',
+  padding: '10px 20px',
+  border: 'none',
+  borderRadius: '8px',
+  backgroundColor: '#00ff99',
+  color: '#000',
+  fontWeight: 'bold',
+  cursor: 'pointer'
+};
 
 export default Game;

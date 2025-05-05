@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getDatabase, ref, set } from 'firebase/database';
+import { auth, database } from '../firebase';
 import { motion } from 'framer-motion';
 
 function Signup({ onSignup }) {
@@ -16,26 +16,21 @@ function Signup({ onSignup }) {
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const usernameRef = doc(db, 'usernames', cleanUsername);
+    const randomPassword = Math.random().toString(36).slice(-10) + 'A!';
 
     try {
-      const existing = await getDoc(usernameRef);
-      if (existing.exists()) {
-        setError('That username is already registered. Please choose another.');
-        return;
-      }
-
-      const auth = getAuth();
-      const randomPassword = Math.random().toString(36).slice(-10) + 'A!';
       const userCredential = await createUserWithEmailAndPassword(auth, email, randomPassword);
       const user = userCredential.user;
 
-      await setDoc(usernameRef, { email });
+      // Save user data in Realtime Database under players/{uid}
+      await set(ref(database, `players/${user.uid}`), {
+        email,
+        username: cleanUsername
+      });
 
       onSignup({ uid: user.uid, username: cleanUsername });
     } catch (err) {
-      console.error('Signup error:', err.code, err.message); 
-  
+      console.error('Signup error:', err.code, err.message);
       setError('Signup failed. Try again.');
     }
   };
