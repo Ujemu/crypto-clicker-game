@@ -38,10 +38,7 @@ function App() {
         alignItems: 'center',
       }}
     >
-      {/* Status Message */}
-      <p style={{ color: 'lime', fontWeight: 'bold', textAlign: 'center' }}>
-        LIVE BUILD — Email + Username Login Active!
-      </p>
+      {/* Removed: Status Message */}
 
       {!user ? (
         showSignup ? (
