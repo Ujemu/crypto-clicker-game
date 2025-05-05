@@ -1,44 +1,44 @@
 import { useState } from 'react';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, get } from 'firebase/database';
+import { database } from '../firebase';
 import { motion } from 'framer-motion';
 
-function Login({ onLogin }) {
+function Login({ onLogin, onSwitch }) {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    const cleanUsername = username.trim().toLowerCase();
-
-    if (!cleanUsername) {
+    if (!username) {
       setError('Please enter your username.');
       return;
     }
 
-    try {
-      const usernameRef = doc(db, 'usernames', cleanUsername);
-      const docSnap = await getDoc(usernameRef);
+    const cleanUsername = username.trim().toLowerCase();
+    const userRef = ref(database, `players/${cleanUsername}`);
 
-      if (!docSnap.exists()) {
-        setError('No account found for that username.');
+    try {
+      const snapshot = await get(userRef);
+      if (!snapshot.exists()) {
+        setError('User not found. Please sign up first.');
         return;
       }
 
-      const { email } = docSnap.data();
-      const auth = getAuth();
-      const userCredential = await signInWithEmailAndPassword(auth, email, 'dummy-password');
-      const user = userCredential.user;
-
-      onLogin({ uid: user.uid, username: cleanUsername });
+      const userData = snapshot.val();
+      onLogin({ username: cleanUsername, displayName: userData.displayName });
     } catch (err) {
       console.error('Login error:', err.message);
-      setError('Login failed. Please try again.');
+      setError('Login failed. Try again.');
     }
   };
 
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '70vh',
+    }}>
       <h2 style={{ color: 'white' }}>Login</h2>
       <input
         type="text"
@@ -46,31 +46,43 @@ function Login({ onLogin }) {
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         style={{
-          padding: '10px',
-          margin: '10px 0',
-          width: '250px',
-          fontSize: '16px',
+          margin: '10px',
+          padding: '8px',
           borderRadius: '5px',
+          border: '1px solid #ccc',
+          width: '200px'
         }}
       />
-      <br />
       <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.9 }}
         onClick={handleLogin}
         style={{
           padding: '10px 20px',
           fontWeight: 'bold',
-          fontSize: '16px',
-          borderRadius: '5px',
-          backgroundColor: '#00f',
-          color: '#fff',
+          marginTop: '10px',
           border: 'none',
-          cursor: 'pointer',
+          borderRadius: '5px',
+          backgroundColor: '#00ff99',
+          color: '#000',
+          cursor: 'pointer'
         }}
       >
-        Log In
+        Login
       </motion.button>
+      <button
+        onClick={onSwitch}
+        style={{
+          marginTop: '15px',
+          background: 'none',
+          border: 'none',
+          color: '#00ff99',
+          textDecoration: 'underline',
+          cursor: 'pointer'
+        }}
+      >
+        Don't have an account? Sign up
+      </button>
       {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
     </div>
   );
