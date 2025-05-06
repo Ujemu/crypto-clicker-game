@@ -5,7 +5,13 @@ import { useEffect, useState } from 'react';
 import Leaderboard from './Leaderboard';
 
 function Game({ user, onLogout }) {
-  const [username, setUsername] = useState('anonymous');
+  console.log("Game.jsx received user:", user); // DEBUG
+
+  if (!user || !user.uid || !user.username) {
+    return <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>Loading user...</p>;
+  }
+
+  const [username, setUsername] = useState(user.username || 'anonymous');
   const [clicks, setClicks] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
@@ -19,13 +25,12 @@ function Game({ user, onLogout }) {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const isAdmin = user?.isAdmin === true;
-  const uid = user?.uid;
 
+  const isAdmin = user?.isAdmin === true;
+  const uid = user.uid;
   const todayDate = new Date().toISOString().slice(0, 10);
 
   const savePlayerData = async () => {
-    if (!uid) return;
     await setDoc(doc(db, "players", uid), {
       username,
       coins: clicks,
@@ -40,7 +45,6 @@ function Game({ user, onLogout }) {
   };
 
   const loadPlayerData = async () => {
-    if (!uid) return;
     try {
       const docSnap = await getDoc(doc(db, "players", uid));
       if (docSnap.exists()) {
@@ -103,9 +107,7 @@ function Game({ user, onLogout }) {
     return () => clearInterval(interval);
   }, [autoClickers, loading]);
 
-  const handleClick = () => {
-    setClicks(prev => prev + multiplier);
-  };
+  const handleClick = () => setClicks(prev => prev + multiplier);
 
   const handleUpgradeMultiplier = () => {
     if (clicks >= multiplierCost) {
@@ -131,9 +133,9 @@ function Game({ user, onLogout }) {
 
   const handleDailyReward = () => {
     if (lastClaimDate !== todayDate) {
-      setClicks(prev => prev + 50);
+      setClicks(prev => prev + 10000);
       setLastClaimDate(todayDate);
-      showPopup('Daily Reward Claimed! +50 Coins');
+      showPopup('Daily Reward Claimed! +10,000 Coins');
     } else {
       alert("You have already claimed today's reward!");
     }
